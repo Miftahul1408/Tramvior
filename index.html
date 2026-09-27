@@ -762,9 +762,7 @@ async function hashPw(pw,salt){
   if(window.crypto&&crypto.subtle){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}
   let h=5381;for(const c of s)h=((h<<5)+h+c.charCodeAt(0))>>>0;return 'f'+h.toString(16);
 }
-function fileToBase64(file){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(file)})}
 const EMAIL_RE=/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-
 function setSession(id,remember){clearSession();try{(remember?localStorage:sessionStorage).setItem('tv_session',JSON.stringify({id}))}catch(e){}}
 function getSession(){for(const st of [localStorage,sessionStorage]){try{const v=st.getItem('tv_session');if(v)return JSON.parse(v).id}catch(e){}}return null}
 function clearSession(){try{localStorage.removeItem('tv_session');sessionStorage.removeItem('tv_session')}catch(e){}}
@@ -800,17 +798,9 @@ function showAuth(mode='login'){
       <div class="col-5"><label class="form-label" for="rKelas">Kelas</label><select id="rKelas" class="form-select">${KELAS.map(k=>`<option>${k}</option>`).join('')}</select></div>
     </div>
     <div class="mb-3"><label class="form-label" for="rSek">Nama sekolah</label><input id="rSek" class="form-control" placeholder="Contoh: SMKN 1 Sukoharjo"><div class="err" data-for="rSek"></div></div>
-    <div class="mb-3"><label class="form-label" for="rKartu">Foto kartu pelajar / kartu identitas jurusan</label>
-     <p class="small muted mb-2">Foto harus menunjukkan namamu dan jurusan yang tertulis di kartu, untuk memverifikasi bahwa kamu benar terdaftar di jurusan yang dipilih.</p>
-     <div class="d-flex align-items-center gap-2">
-      <label class="btn btn-ghost btn-sm" style="cursor:pointer">${ic('phone','sm')} Ambil/unggah foto<input id="rKartu" type="file" accept="image/*" capture="environment" hidden></label>
-      <span class="small muted" id="rKartuName">Belum ada foto</span>
-     </div>
-     <img id="rKartuPrev" hidden style="max-width:100%;border-radius:12px;margin-top:8px;border:1px solid var(--line)">
-     <div class="err" data-for="rKartu"></div></div>
     <div class="mb-3"><label class="form-label" for="rRef">Kode referral (opsional)</label><input id="rRef" class="form-control" placeholder="Dapat Premium gratis 3 sampai 7 hari" autocapitalize="characters"><div class="err" data-for="rRef"></div></div>
     <button class="btn btn-t w-100" type="submit">Buat akun</button>
-    <p class="small muted mt-3">Data akunmu, termasuk foto kartu, disimpan di perangkat ini (localStorage), bukan dikirim ke server mana pun.</p>
+    <p class="small muted mt-3">Data akunmu disimpan di perangkat ini (localStorage).</p>
    </form>`}
   </div>`;
   const root=$('#auth');bindPwToggles(root);
@@ -829,13 +819,10 @@ function showAuth(mode='login'){
     $('#lForgot').onclick=e=>{e.preventDefault();forgotFlow()};
     $('#lDemo').onclick=async()=>{
       let u=users().find(x=>x.email==='demo@tramvior.id');
-      if(!u){const salt=Math.random().toString(36).slice(2);u={id:'u_demo'+Date.now().toString(36).slice(-4),nama:'Siswa Demo',email:'demo@tramvior.id',salt,hash:await hashPw('demo123',salt),jurusan:'Akuntansi',kelas:'XI',sekolah:'SMKN 1 Sukoharjo',avatar:'',kartuJurusan:'',kartuVerified:true,kartuTanggal:Date.now(),lastJurusanChange:0,createdAt:Date.now()};saveUsers([...users(),u])}
+      if(!u){const salt=Math.random().toString(36).slice(2);u={id:'u_demo'+Date.now().toString(36).slice(-4),nama:'Siswa Demo',email:'demo@tramvior.id',salt,hash:await hashPw('demo123',salt),jurusan:'Akuntansi',kelas:'XI',sekolah:'SMKN 1 Sukoharjo',avatar:'',createdAt:Date.now()};saveUsers([...users(),u])}
       startSession(u,true);
     };
   }else{
-    let rKartuFile=null;
-    $('#rKartu').onchange=e=>{const f=e.target.files[0];if(!f)return;rKartuFile=f;$('#rKartuName').textContent=f.name;fErr('rKartu','');
-      fileToBase64(f).then(b64=>{$('#rKartuPrev').src=b64;$('#rKartuPrev').hidden=false});};
     $('#fReg').onsubmit=async e=>{e.preventDefault();clearErrs(root);
       const nama=$('#rNama').value.trim(),email=$('#rEmail').value.trim().toLowerCase(),pw=$('#rPass').value,sek=$('#rSek').value.trim(),ref=$('#rRef').value.trim();let bad=false;
       if(nama.length<2){fErr('rNama','Nama minimal 2 huruf');bad=true}
@@ -843,11 +830,9 @@ function showAuth(mode='login'){
       else if(users().some(x=>x.email===email)){fErr('rEmail','Email sudah terdaftar. Masuk lewat tab Masuk.');bad=true}
       if(pw.length<6){fErr('rPass','Kata sandi minimal 6 karakter');bad=true}
       if(sek.length<3){fErr('rSek','Isi nama sekolahmu');bad=true}
-      if(!rKartuFile){fErr('rKartu','Wajib unggah foto kartu pelajar atau kartu identitas jurusan');bad=true}
       if(bad)return;
-      const kartuB64=await fileToBase64(rKartuFile);
       const salt=Math.random().toString(36).slice(2);
-      const u={id:'u_'+Date.now().toString(36)+rnd(10,99),nama,email,salt,hash:await hashPw(pw,salt),jurusan:$('#rJur').value,kelas:$('#rKelas').value,sekolah:sek,avatar:'',kartuJurusan:kartuB64,kartuVerified:true,kartuTanggal:Date.now(),lastJurusanChange:0,createdAt:Date.now()};
+      const u={id:'u_'+Date.now().toString(36)+rnd(10,99),nama,email,salt,hash:await hashPw(pw,salt),jurusan:$('#rJur').value,kelas:$('#rKelas').value,sekolah:sek,avatar:'',createdAt:Date.now()};
       saveUsers([...users(),u]);startSession(u,true);
       if(ref){const r=applyReferral(ref);toast(r.msg,r.ok?'ok':'warn')}
     };
@@ -1426,7 +1411,7 @@ function profilH(){
   return `<div class="pt-3 px">
    <div class="d-flex align-items-center gap-3 mb-3">
     <div class="av lg">${U.avatar?`<img src="${U.avatar}" style="width:100%;height:100%;object-fit:cover">`:initials(U.nama)}</div>
-    <div class="flex-fill"><h2 class="mb-0" style="font-size:19px">${esc(U.nama)}</h2><p class="muted small mb-1">${esc(U.jurusan)} · Kelas ${esc(U.kelas)} ${U.kartuVerified?`<span class="pill pill-ok" style="vertical-align:middle">${ic('shield','sm')}Terverifikasi</span>`:''}</p>
+    <div class="flex-fill"><h2 class="mb-0" style="font-size:19px">${esc(U.nama)}</h2><p class="muted small mb-1">${esc(U.jurusan)} · Kelas ${esc(U.kelas)}</p>
      ${premium()?`<span class="pill pill-y">${ic('crown')}Premium aktif</span>`:'<span class="pill">Akun Gratis</span>'}</div>
     <a class="icon-btn" href="#/edit-profil" aria-label="Edit profil">${ic('pencil')}</a></div>
    <div class="stat"><div><b>${S.lifetime}</b><small>Total poin</small></div><div><b>${S.streak}</b><small>Streak</small></div><div><b>${Object.keys(S.mastered).length}</b><small>Kompetensi</small></div></div>
@@ -1464,68 +1449,30 @@ function profilB(){
     saveUsers(users().filter(u=>u.id!==U.id));LS.del(stKey(U.id));const id=U.id;logout();});
 }
 function editH(){
-  const days=Math.ceil((90*864e5-(Date.now()-(U.lastJurusanChange||0)))/864e5);
-  const cooling=U.lastJurusanChange&&days>0;
   return `${sub('Edit Profil','profil')}<div class="px">
    <div class="text-center mb-3"><div class="av lg mx-auto" id="avPrev">${U.avatar?`<img src="${U.avatar}" style="width:100%;height:100%;object-fit:cover">`:initials(U.nama)}</div>
     <label class="btn btn-ghost btn-sm mt-2">Ganti foto<input type="file" accept="image/*" id="avFile" hidden></label></div>
    <form id="fEdit">
     <div class="mb-3"><label class="form-label" for="eNama">Nama</label><input id="eNama" class="form-control" value="${esc(U.nama)}"><div class="err" data-for="eNama"></div></div>
-    <div class="mb-3"><label class="form-label">Jurusan</label>
-     <div class="card-t d-flex align-items-center gap-2 py-2">
-      <span class="pill ${U.kartuVerified?'pill-ok':''}">${ic(U.kartuVerified?'shield':'lock','sm')}${esc(U.jurusan)}</span>
-      <span class="small muted flex-fill">${U.kartuVerified?'Terverifikasi kartu jurusan':'Kartu belum terverifikasi'}</span>
-      ${U.kartuJurusan?`<button type="button" class="icon-btn" id="viewKartu" aria-label="Lihat foto kartu">${ic('eye','sm')}</button>`:''}
-     </div>
-     <p class="small muted mt-1 mb-0">Jurusan tidak bisa diganti langsung di sini. Gunakan "Ajukan Pindah Jurusan" di bawah, karena perlu foto kartu identitas jurusan baru.</p></div>
-    <div class="row g-2 mb-3"><div class="col-12"><label class="form-label" for="eKelas">Kelas</label><select id="eKelas" class="form-select">${KELAS.map(k=>`<option ${k===U.kelas?'selected':''}>${k}</option>`).join('')}</select></div></div>
+    <div class="row g-2 mb-3"><div class="col-7"><label class="form-label" for="eJur">Jurusan</label><select id="eJur" class="form-select">${Object.keys(JUR).map(j=>`<option ${j===U.jurusan?'selected':''}>${j}</option>`).join('')}</select></div>
+     <div class="col-5"><label class="form-label" for="eKelas">Kelas</label><select id="eKelas" class="form-select">${KELAS.map(k=>`<option ${k===U.kelas?'selected':''}>${k}</option>`).join('')}</select></div></div>
     <div class="mb-3"><label class="form-label" for="eSek">Sekolah</label><input id="eSek" class="form-control" value="${esc(U.sekolah)}"><div class="err" data-for="eSek"></div></div>
     <button class="btn btn-t w-100" type="submit">Simpan perubahan</button>
     <a class="btn btn-ghost w-100 mt-2" href="#/ganti-sandi">Ganti kata sandi</a>
-    ${cooling?`<button class="btn btn-ghost w-100 mt-2" type="button" disabled>${ic('lock','sm')} Ajukan Pindah Jurusan (tersedia lagi ${days} hari lagi)</button>`
-      :`<button class="btn btn-o w-100 mt-2" type="button" id="btnPindah">${ic('signal','sm')} Ajukan Pindah Jurusan</button>`}
    </form></div>`;
 }
 function editB(){
   $('#avFile').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{U.avatar=r.result;$('#avPrev').innerHTML=`<img src="${U.avatar}" style="width:100%;height:100%;object-fit:cover">`};r.readAsDataURL(f)};
-  const vk=$('#viewKartu');if(vk)vk.onclick=()=>modal(`<div class="p-3 text-center"><h5 class="mb-2">Foto Kartu Jurusan</h5><img src="${U.kartuJurusan}" style="max-width:100%;border-radius:12px"><button class="btn btn-ghost w-100 mt-3" data-close>Tutup</button></div>`);
-  const bp=$('#btnPindah');if(bp)bp.onclick=pindahJurusanFlow;
   $('#fEdit').onsubmit=e=>{e.preventDefault();clearErrs($('#fEdit'));
-    const nama=$('#eNama').value.trim(),sek=$('#eSek').value.trim();let bad=false;
+    const nama=$('#eNama').value.trim(),sek=$('#eSek').value.trim(),jurBaru=$('#eJur').value,kelasBaru=$('#eKelas').value;let bad=false;
     if(nama.length<2){fErr('eNama','Nama minimal 2 huruf');bad=true}
     if(sek.length<3){fErr('eSek','Isi nama sekolah');bad=true}
     if(bad)return;
-    U.nama=nama;U.kelas=$('#eKelas').value;U.sekolah=sek;
-    saveUsers(users().map(x=>x.id===U.id?U:x));toast('Profil diperbarui','ok');go('profil');
-  };
-}
-function pindahJurusanFlow(){
-  let file=null;
-  const m=modal(`<div class="p-4">
-   <h4 class="mb-1">Ajukan Pindah Jurusan</h4>
-   <p class="muted small mb-3">Perlu foto kartu identitas jurusan baru dan alasan pindah. Pengajuan dibatasi sekali per 90 hari untuk mencegah penyalahgunaan. Progres jurusan lama tetap tersimpan.</p>
-   <div class="mb-3"><label class="form-label" for="pjJur">Jurusan baru</label><select id="pjJur" class="form-select">${Object.keys(JUR).filter(j=>j!==U.jurusan).map(j=>`<option>${j}</option>`).join('')}</select></div>
-   <div class="mb-3"><label class="form-label" for="pjAlasan">Alasan pindah</label><textarea id="pjAlasan" class="form-control" rows="2" placeholder="Contoh: pindah kelas jurusan resmi dari sekolah"></textarea><div class="err" data-for="pjAlasan"></div></div>
-   <div class="mb-3"><label class="form-label">Foto kartu jurusan baru</label>
-    <div class="d-flex align-items-center gap-2"><label class="btn btn-ghost btn-sm" style="cursor:pointer">${ic('phone','sm')} Ambil/unggah foto<input id="pjKartu" type="file" accept="image/*" capture="environment" hidden></label><span class="small muted" id="pjKartuName">Belum ada foto</span></div>
-    <img id="pjKartuPrev" hidden style="max-width:100%;border-radius:12px;margin-top:8px;border:1px solid var(--line)">
-    <div class="err" data-for="pjKartu"></div></div>
-   <div class="d-flex gap-2"><button class="btn btn-ghost flex-fill" data-close>Batal</button><button class="btn btn-t flex-fill" id="pjSubmit">Ajukan &amp; Verifikasi</button></div></div>`);
-  $('#pjKartu',m).onchange=e=>{const f=e.target.files[0];if(!f)return;file=f;$('#pjKartuName',m).textContent=f.name;fErr('pjKartu','');
-    fileToBase64(f).then(b64=>{$('#pjKartuPrev',m).src=b64;$('#pjKartuPrev',m).hidden=false});};
-  $('#pjSubmit',m).onclick=async()=>{
-    fErr('pjAlasan','');fErr('pjKartu','');let bad=false;
-    const alasan=$('#pjAlasan',m).value.trim();
-    if(alasan.length<10){fErr('pjAlasan','Tulis alasan minimal 10 karakter');bad=true}
-    if(!file){fErr('pjKartu','Wajib unggah foto kartu jurusan baru');bad=true}
-    if(bad)return;
-    const jurBaru=$('#pjJur',m).value,kartuB64=await fileToBase64(file);
-    const btn=$('#pjSubmit',m);btn.disabled=true;btn.textContent='Memeriksa kartu identitas...';
-    setTimeout(()=>{
-      U.jurusan=jurBaru;U.kartuJurusan=kartuB64;U.kartuVerified=true;U.kartuTanggal=Date.now();U.lastJurusanChange=Date.now();
-      saveUsers(users().map(x=>x.id===U.id?U:x));closeModal();
-      toast(`Pindah jurusan ke ${jurBaru} disetujui`,'ok');go('profil');
-    },1200);
+    const applyEdit=()=>{U.nama=nama;U.jurusan=jurBaru;U.kelas=kelasBaru;U.sekolah=sek;
+      saveUsers(users().map(x=>x.id===U.id?U:x));toast('Profil diperbarui','ok');go('profil');};
+    if(jurBaru!==U.jurusan){
+      confirmBox('Ganti Jurusan',`Jurusan akan diganti dari ${U.jurusan} ke ${jurBaru}. Materi ${U.jurusan} akan terkunci, tapi progres, poin, dan lencana yang sudah kamu dapat tetap tersimpan dan bisa dilanjutkan lagi nanti bila ganti kembali ke ${U.jurusan}.`,'Ganti jurusan',applyEdit,false);
+    }else applyEdit();
   };
 }
 function pwEditH(){
