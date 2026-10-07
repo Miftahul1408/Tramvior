@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="id" data-bs-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tramvior Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<style>
+:root{--navy:#0B2A6F;--blue:#2F6BFF;--sky:#E8F0FF;--orange:#FF8A1F;--yellow:#FFC93C;--bg:#F3F6FF;--card:#fff;--ink:#14213D;--muted:#5D6B8C;--line:#E2E8F6;--ok:#12B76A;--ok-bg:#E6F7EF;--bad:#E5484D;--bad-bg:#FDECEC}
+[data-bs-theme=dark]{--bg:#0A1024;--card:#121B36;--ink:#EAF0FF;--muted:#9BA9CE;--line:#212F58;--sky:#1A2850;--bs-body-bg:#0A1024;--bs-body-color:#EAF0FF;--bs-border-color:#212F58}
+body{font-family:'Poppins',system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:14px}
+[hidden]{display:none!important}
+a{text-decoration:none}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:19px}
+.logo{width:34px;height:34px;border-radius:9px;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700}
+#topbar{background:var(--card);border-bottom:1px solid var(--line);padding:10px 18px;position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between}
+.card-t{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:0 1px 2px rgba(11,42,111,.06),0 6px 18px rgba(11,42,111,.06)}
+.pill{display:inline-flex;align-items:center;gap:4px;padding:2px 10px;border-radius:99px;background:var(--sky);color:var(--blue);font-size:12px;font-weight:600;white-space:nowrap}
+.pill-ok{background:var(--ok-bg);color:var(--ok)}.pill-bad{background:var(--bad-bg);color:var(--bad)}.pill-y{background:var(--yellow);color:#3A2A00}
+.stat-box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;text-align:center}
+.stat-box b{font-size:22px;display:block}.stat-box small{color:var(--muted)}
+table{font-size:13px}
+.tbl-row{cursor:pointer}
+.tbl-row:hover{background:var(--sky)}
+.av{width:34px;height:34px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:12px}
+.auth-box{max-width:380px;margin:80px auto;padding:28px;background:var(--card);border-radius:18px;border:1px solid var(--line)}
+.banner-note{background:#FFF5D6;color:#8A6100;border-radius:12px;padding:10px 14px;font-size:12.5px;margin-bottom:14px}
+[data-bs-theme=dark] .banner-note{background:#3A3010;color:#FFD466}
+.modal-dialog{max-width:640px}
+.log-tbl{max-height:420px;overflow:auto}
+.sec-label{font-weight:600;font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin:14px 0 6px}
+.form-select,.form-control{border-radius:10px}
+.btn{border-radius:10px}
+.tabs-t{display:flex;gap:6px;margin-bottom:12px;border-bottom:1px solid var(--line)}
+.tab-b{border:0;background:none;padding:9px 16px;font-weight:600;color:var(--muted);border-bottom:3px solid transparent;margin-bottom:-1px;font-family:inherit}
+.tab-b.active{color:var(--blue);border-bottom-color:var(--blue)}
+.ans-txt{white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere;min-width:200px}
+.ans-tbl td,.ans-tbl th{vertical-align:top}
+.sel-ok{color:var(--ok)}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="modalRoot"></div>
+<div id="toasts" style="position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:999;display:grid;gap:8px"></div>
+<script>
+'use strict';
+const $=(s,r=document)=>r.querySelector(s);
+const $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmtDate=t=>t?new Date(t).toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'}):'—';
+const fmtDateTime=t=>t?new Date(t).toLocaleString('id-ID',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—';
+const initials=n=>(n||'?').trim().split(/\s+/).slice(0,2).map(w=>w[0]).join('').toUpperCase();
+function toast(msg,type='info'){
+  const t=document.createElement('div');
+  t.style.cssText='background:#0B2A6F;color:#fff;padding:10px 16px;border-radius:12px;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,.2)';
+  if(type==='bad')t.style.background='#E5484D';if(type==='ok')t.style.background='#12B76A';
+  t.textContent=msg;$('#toasts').appendChild(t);setTimeout(()=>t.remove(),2800);
+}
+async function hashPw(pw,salt){
+  const s=salt+':'+pw;
+  if(window.crypto&&crypto.subtle){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}
+  let h=5381;for(const c of s)h=((h<<5)+h+c.charCodeAt(0))>>>0;return 'f'+h.toString(16);
+}
+
+/* =====================================================
+   AKSES DATA — membaca localStorage yang SAMA dengan
+   aplikasi siswa Tramvior. Admin HARUS dibuka dari origin
+   (domain + port) yang sama dengan aplikasi siswa, karena
+   localStorage dipisah per origin oleh browser.
+   ===================================================== */
+const LS={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}},del(k){try{localStorage.removeItem(k)}catch(e){}}};
+const getUsers=()=>LS.get('tv_users',[]);
+const saveUsers=u=>LS.set('tv_users',u);
+const getState=id=>LS.get('tv_state_'+id,null);
+const stKey=id=>'tv_state_'+id;
+const ADMIN_KEY='tva_admins';
+function getAdmins(){return LS.get(ADMIN_KEY,[])}
+async function ensureSeedAdmin(){
+  if(getAdmins().length)return;
+  const salt=Math.random().toString(36).slice(2);
+  LS.set(ADMIN_KEY,[{email:'admin@tramvior.id',nama:'Admin Tramvior',salt,hash:await hashPw('admin123',salt)}]);
+}
+
+/* =====================================================
+   AUTH ADMIN (terpisah dari akun siswa)
+   ===================================================== */
+let ADM=null;
+function getSession(){try{return JSON.parse(sessionStorage.getItem('tva_session'))?.email||null}catch(e){return null}}
+function setSession(email){sessionStorage.setItem('tva_session',JSON.stringify({email}))}
+function clearSession(){sessionStorage.removeItem('tva_session')}
+
+function renderLogin(){
+  $('#app').innerHTML=`<div class="auth-box">
+   <div class="brand mb-3"><div class="logo">T</div>Tramvior <span class="muted" style="font-weight:500">Admin</span></div>
+   <div class="banner-note">Panel ini membaca data langsung dari browser yang sama dengan aplikasi siswa. Pastikan dibuka dari server/origin yang sama (periksa domain dan port di address bar harus identik dengan aplikasi siswa).</div>
+   <form id="fLogin">
+    <div class="mb-3"><label class="form-label">Email admin</label><input id="aEmail" type="email" class="form-control" value="admin@tramvior.id"></div>
+    <div class="mb-3"><label class="form-label">Kata sandi</label><input id="aPass" type="password" class="form-control" value="admin123"></div>
+    <div class="text-danger small mb-2" id="aErr"></div>
+    <button class="btn btn-primary w-100" type="submit">Masuk sebagai Admin</button>
+   </form>
+   <p class="small muted mt-3 mb-0">Akun demo: <b>admin@tramvior.id</b> / <b>admin123</b>. Ganti kata sandi ini sebelum dipakai sungguhan.</p>
+  </div>`;
+  $('#fLogin').onsubmit=async e=>{
+    e.preventDefault();
+    const email=$('#aEmail').value.trim().toLowerCase(),pw=$('#aPass').value;
+    const a=getAdmins().find(x=>x.email===email);
+    if(!a||await hashPw(pw,a.salt)!==a.hash){$('#aErr').textContent='Email atau kata sandi admin salah.';return}
+    ADM=a;setSession(a.email);renderDashboard();
+  };
+}
+
+/* =====================================================
+   DASHBOARD
+   ===================================================== */
+let FILTER={q:'',jur:'',prem:''};
+function premLabel(u,s){
+  if(!s||!s.premium||!s.premium.until||s.premium.until<=Date.now())return `<span class="pill">Gratis</span>`;
+  const d=Math.ceil((s.premium.until-Date.now())/864e5);
+  return `<span class="pill pill-y">Premium · ${d} hari</span>`;
+}
+function rowStats(u){
+  const s=getState(u.id)||{};
+  return {
+    points:s.lifetime||0,streak:s.streak||0,
+    mastered:Object.keys(s.mastered||{}).length,
+    answers:(s.answerLog||[]).length,
+    lastSync:s.lastSync||u.createdAt||0
+  };
+}
+function renderDashboard(){
+  const users=getUsers();
+  const jurOpts=[...new Set(users.map(u=>u.jurusan))];
+  $('#app').innerHTML=`
+   <div id="topbar"><div class="brand"><div class="logo">T</div>Tramvior <span class="muted" style="font-weight:500">Admin</span></div>
+    <div class="d-flex gap-2 align-items-center">
+     <span class="small muted">${esc(ADM.nama||ADM.email)}</span>
+     <button class="btn btn-outline-secondary btn-sm" id="btnTheme">Tema</button>
+     <button class="btn btn-outline-secondary btn-sm" id="btnExportAll">Ekspor Siswa (CSV)</button>
+     <button class="btn btn-outline-danger btn-sm" id="btnLogout">Keluar</button>
+    </div></div>
+   <div class="container-fluid p-3 p-md-4">
+    <div class="banner-note">Data di bawah dibaca langsung dari localStorage browser ini (akun siswa yang pernah login di perangkat/browser yang sama). Ini bukan database server — kalau siswa pakai perangkat lain, datanya tidak akan muncul di sini.</div>
+    <div class="row g-2 mb-3">
+     <div class="col-6 col-md-3"><div class="stat-box"><b id="stTotal">0</b><small>Total akun</small></div></div>
+     <div class="col-6 col-md-3"><div class="stat-box"><b id="stPremium">0</b><small>Premium aktif</small></div></div>
+     <div class="col-6 col-md-3"><div class="stat-box"><b id="stVerif">0</b><small>Kartu terverifikasi</small></div></div>
+     <div class="col-6 col-md-3"><div class="stat-box"><b id="stAnswers">0</b><small>Total jawaban tercatat</small></div></div>
+    </div>
+    <div class="tabs-t" role="tablist">
+     <button class="tab-b active" id="tabSiswa" data-tab="siswa">Siswa</button>
+     <button class="tab-b" id="tabJawab" data-tab="jawab">Bank Jawaban</button>
+    </div>
+    <div id="viewSiswa">
+    <div class="card-t p-3 mb-3">
+     <div class="row g-2">
+      <div class="col-md-5"><input id="fQ" class="form-control" placeholder="Cari nama, email, atau sekolah..."></div>
+      <div class="col-md-3"><select id="fJur" class="form-select"><option value="">Semua jurusan</option>${jurOpts.map(j=>`<option>${esc(j)}</option>`).join('')}</select></div>
+      <div class="col-md-3"><select id="fPrem" class="form-select"><option value="">Semua status</option><option value="premium">Premium aktif</option><option value="gratis">Gratis</option></select></div>
+      <div class="col-md-1"><button class="btn btn-outline-secondary w-100" id="btnRefresh" title="Muat ulang data">⟳</button></div>
+     </div>
+    </div>
+    <div class="card-t p-0" style="overflow:auto">
+     <table class="table table-hover mb-0 align-middle">
+      <thead><tr><th>Siswa</th><th>Jurusan / Kelas</th><th>Sekolah</th><th>Kartu</th><th>Status</th><th>Poin</th><th>Kompetensi</th><th>Jawaban</th><th>Terakhir aktif</th></tr></thead>
+      <tbody id="tblBody"></tbody>
+     </table>
+    </div>
+    <p class="small muted mt-2" id="emptyNote" hidden>Belum ada akun siswa yang terdaftar di browser ini.</p>
+    </div>
+    <div id="viewJawab" hidden>
+     <div class="card-t p-3 mb-3">
+      <div class="row g-2">
+       <div class="col-md-3"><input id="aQ" class="form-control" placeholder="Cari soal, jawaban, atau nama..."></div>
+       <div class="col-6 col-md-2"><select id="aSiswa" class="form-select"></select></div>
+       <div class="col-6 col-md-2"><select id="aJur" class="form-select"></select></div>
+       <div class="col-6 col-md-2"><select id="aMode" class="form-select"></select></div>
+       <div class="col-6 col-md-1"><select id="aStatus" class="form-select"><option value="">Semua</option><option value="benar">Benar</option><option value="salah">Salah</option></select></div>
+       <div class="col-12 col-md-2"><button class="btn btn-outline-secondary w-100" id="btnExportAns">Ekspor Jawaban (CSV)</button></div>
+      </div>
+     </div>
+     <p class="small muted mb-2" id="aSummary"></p>
+     <div class="card-t p-0" style="overflow:auto">
+      <table class="table table-hover mb-0 ans-tbl">
+       <thead><tr><th>Waktu</th><th>Siswa</th><th>Jurusan / Kompetensi</th><th>Mode</th><th>Soal</th><th>Jawaban dipilih</th><th>Jawaban benar</th><th>Status</th></tr></thead>
+       <tbody id="ansBody"></tbody>
+      </table>
+     </div>
+     <div class="text-center mt-3" id="aMoreWrap" hidden><button class="btn btn-outline-secondary btn-sm" id="aMore">Tampilkan lebih banyak</button></div>
+    </div>
+   </div>`;
+  $('#btnLogout').onclick=()=>{clearSession();ADM=null;renderLogin()};
+  $('#btnTheme').onclick=()=>{const d=document.documentElement;d.setAttribute('data-bs-theme',d.getAttribute('data-bs-theme')==='dark'?'light':'dark')};
+  $('#btnExportAll').onclick=exportAllCSV;
+  $('#btnRefresh').onclick=()=>{paintTable();fillAnswerFilters();paintAnswers();toast('Data dimuat ulang','ok')};
+  $$('.tab-b').forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
+  $('#aQ').oninput=e=>{AFILTER.q=e.target.value.toLowerCase();ALIMIT=ALIMIT_STEP;paintAnswers()};
+  $('#aSiswa').onchange=e=>{AFILTER.siswa=e.target.value;ALIMIT=ALIMIT_STEP;paintAnswers()};
+  $('#aJur').onchange=e=>{AFILTER.jur=e.target.value;ALIMIT=ALIMIT_STEP;paintAnswers()};
+  $('#aMode').onchange=e=>{AFILTER.mode=e.target.value;ALIMIT=ALIMIT_STEP;paintAnswers()};
+  $('#aStatus').onchange=e=>{AFILTER.status=e.target.value;ALIMIT=ALIMIT_STEP;paintAnswers()};
+  $('#aMore').onclick=()=>{ALIMIT+=ALIMIT_STEP;paintAnswers()};
+  $('#btnExportAns').onclick=exportAnswersCSV;
+  fillAnswerFilters();
+  $('#fQ').oninput=e=>{FILTER.q=e.target.value.toLowerCase();paintTable()};
+  $('#fJur').onchange=e=>{FILTER.jur=e.target.value;paintTable()};
+  $('#fPrem').onchange=e=>{FILTER.prem=e.target.value;paintTable()};
+  paintTable();
+  setTab(ATAB);
+}
+function paintTable(){
+  const users=getUsers();
+  const body=$('#tblBody');if(!body)return;
+  const rows=users.map(u=>{
+    const s=getState(u.id)||{};
+    const stat=rowStats(u);
+    const isPrem=!!(s.premium&&s.premium.until>Date.now());
+    return{u,s,stat,isPrem};
+  });
+  const totalPremium=rows.filter(r=>r.isPrem).length;
+  const totalVerif=rows.filter(r=>r.u.kartuVerified).length;
+  const totalAnswers=rows.reduce((n,r)=>n+r.stat.answers,0);
+  $('#stTotal').textContent=users.length;
+  $('#stPremium').textContent=totalPremium;
+  $('#stVerif').textContent=totalVerif;
+  $('#stAnswers').textContent=totalAnswers;
+  $('#emptyNote').hidden=users.length>0;
+  const filtered=rows.filter(({u,isPrem})=>{
+    const hay=(u.nama+' '+u.email+' '+u.sekolah).toLowerCase();
+    if(FILTER.q&&!hay.includes(FILTER.q))return false;
+    if(FILTER.jur&&u.jurusan!==FILTER.jur)return false;
+    if(FILTER.prem==='premium'&&!isPrem)return false;
+    if(FILTER.prem==='gratis'&&isPrem)return false;
+    return true;
+  });
+  body.innerHTML=filtered.map(({u,s,stat,isPrem})=>`
+   <tr class="tbl-row" data-id="${u.id}">
+    <td><div class="d-flex align-items-center gap-2"><div class="av">${initials(u.nama)}</div><div><b>${esc(u.nama)}</b><div class="small muted">${esc(u.email)}</div></div></div></td>
+    <td>${esc(u.jurusan)}<div class="small muted">Kelas ${esc(u.kelas)}</div></td>
+    <td>${esc(u.sekolah)}</td>
+    <td>${u.kartuVerified?'<span class="pill pill-ok">Terverifikasi</span>':'<span class="pill pill-bad">Belum</span>'}</td>
+    <td>${isPrem?`<span class="pill pill-y">Premium · ${Math.ceil((s.premium.until-Date.now())/864e5)}h</span>`:'<span class="pill">Gratis</span>'}</td>
+    <td>${(stat.points||0).toLocaleString('id-ID')}</td>
+    <td>${stat.mastered}</td>
+    <td>${stat.answers}</td>
+    <td class="small">${stat.lastSync?fmtDateTime(stat.lastSync):'—'}</td>
+   </tr>`).join('')||`<tr><td colspan="9" class="text-center text-muted py-4">Tidak ada hasil yang cocok.</td></tr>`;
+  $$('.tbl-row',body).forEach(tr=>tr.onclick=()=>openDetail(tr.dataset.id));
+}
+/* =====================================================
+   BANK JAWABAN
+   ===================================================== */
+let ATAB='siswa';
+let AFILTER={q:'',siswa:'',jur:'',mode:'',status:''};
+const ALIMIT_STEP=200;
+let ALIMIT=ALIMIT_STEP;
+function setTab(t){
+  ATAB=t;
+  const vs=$('#viewSiswa'),vj=$('#viewJawab');if(!vs||!vj)return;
+  vs.hidden=t!=='siswa';vj.hidden=t!=='jawab';
+  $$('.tab-b').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));
+  if(t==='jawab')paintAnswers();
+}
+function allAnswers(){
+  const out=[];
+  getUsers().forEach(u=>{const st=getState(u.id)||{};(st.answerLog||[]).forEach(l=>out.push({u,l}))});
+  return out.sort((a,b)=>(b.l.ts||0)-(a.l.ts||0));
+}
+function filteredAnswers(){
+  return allAnswers().filter(({u,l})=>{
+    if(AFILTER.siswa&&u.id!==AFILTER.siswa)return false;
+    if(AFILTER.jur&&(l.jur||u.jurusan)!==AFILTER.jur)return false;
+    if(AFILTER.mode&&l.mode!==AFILTER.mode)return false;
+    if(AFILTER.status==='benar'&&!l.benar)return false;
+    if(AFILTER.status==='salah'&&l.benar)return false;
+    if(AFILTER.q){
+      const hay=[u.nama,l.q,l.chosen,l.correctText,l.kid].join(' ').toLowerCase();
+      if(!hay.includes(AFILTER.q))return false;
+    }
+    return true;
+  });
+}
+function fillAnswerFilters(){
+  const sel=$('#aSiswa');if(!sel)return;
+  const users=getUsers(),all=allAnswers();
+  const jurs=[...new Set([...users.map(u=>u.jurusan),...all.map(a=>a.l.jur)].filter(Boolean))];
+  const modes=[...new Set(all.map(a=>a.l.mode).filter(Boolean))];
+  sel.innerHTML='<option value="">Semua siswa</option>'+users.map(u=>`<option value="${esc(u.id)}">${esc(u.nama)}</option>`).join('');
+  $('#aJur').innerHTML='<option value="">Semua jurusan</option>'+jurs.map(j=>`<option>${esc(j)}</option>`).join('');
+  $('#aMode').innerHTML='<option value="">Semua mode</option>'+modes.map(m=>`<option>${esc(m)}</option>`).join('');
+  // pulihkan pilihan; kalau opsinya sudah tidak ada, reset filter
+  [['#aSiswa','siswa'],['#aJur','jur'],['#aMode','mode']].forEach(([id,k])=>{
+    const el=$(id);el.value=AFILTER[k];if(el.value!==AFILTER[k])AFILTER[k]='';
+  });
+  $('#aStatus').value=AFILTER.status;
+  $('#aQ').value=AFILTER.q;
+}
+function paintAnswers(){
+  const body=$('#ansBody');if(!body)return;
+  const rows=filteredAnswers();
+  const benar=rows.filter(r=>r.l.benar).length;
+  const shown=rows.slice(0,ALIMIT);
+  $('#aSummary').textContent=rows.length
+    ?`Menampilkan ${shown.length.toLocaleString('id-ID')} dari ${rows.length.toLocaleString('id-ID')} jawaban · Benar ${benar.toLocaleString('id-ID')} (${Math.round(benar/rows.length*100)}%) · Salah ${(rows.length-benar).toLocaleString('id-ID')}`
+    :'';
+  body.innerHTML=shown.map(({u,l})=>`
+   <tr>
+    <td class="small text-nowrap">${fmtDateTime(l.ts)}</td>
+    <td><b>${esc(u.nama)}</b><div class="small muted">Kelas ${esc(u.kelas)}</div></td>
+    <td class="small">${esc(l.jur||u.jurusan)}<div class="muted">${esc(l.kid||'')}</div></td>
+    <td class="small">${esc(l.mode||'')}</td>
+    <td class="ans-txt">${esc(l.q)}</td>
+    <td class="ans-txt">${esc(l.chosen)}</td>
+    <td class="ans-txt">${esc(l.correctText)}</td>
+    <td>${l.benar?'<span class="pill pill-ok">Benar</span>':'<span class="pill pill-bad">Salah</span>'}</td>
+   </tr>`).join('')||`<tr><td colspan="8" class="text-center text-muted py-4">${allAnswers().length?'Tidak ada jawaban yang cocok dengan filter.':'Belum ada jawaban soal yang tercatat.'}</td></tr>`;
+  $('#aMoreWrap').hidden=rows.length<=ALIMIT;
+}
+function exportAnswersCSV(){
+  const rows=filteredAnswers();
+  if(!rows.length){toast('Tidak ada jawaban untuk diekspor','info');return}
+  const head=['Waktu','Nama','Email','Kelas','Jurusan','Kompetensi','Mode','Soal','JawabanDipilih','JawabanBenar','Status'];
+  const data=rows.map(({u,l})=>[new Date(l.ts).toLocaleString('id-ID'),u.nama,u.email,u.kelas,l.jur||u.jurusan,l.kid,l.mode,l.q,l.chosen,l.correctText,l.benar?'Benar':'Salah']);
+  downloadCSV('tramvior-bank-jawaban.csv',[head,...data]);
+  toast(`${rows.length} jawaban diekspor`,'ok');
+}
+function exportAllCSV(){
+  const users=getUsers();
+  const head=['Nama','Email','Jurusan','Kelas','Sekolah','KartuTerverifikasi','StatusPremium','PoinLifetime','Streak','KompetensiDikuasai','JumlahJawaban'];
+  const rows=users.map(u=>{
+    const s=getState(u.id)||{};const isPrem=s.premium&&s.premium.until>Date.now();
+    return[u.nama,u.email,u.jurusan,u.kelas,u.sekolah,u.kartuVerified?'Ya':'Tidak',isPrem?'Premium':'Gratis',s.lifetime||0,s.streak||0,Object.keys(s.mastered||{}).length,(s.answerLog||[]).length];
+  });
+  downloadCSV('tramvior-siswa.csv',[head,...rows]);
+}
+function downloadCSV(filename,rows){
+  const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+  const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;a.click();URL.revokeObjectURL(a.href);
+}
+
+/* =====================================================
+   DETAIL SISWA
+   ===================================================== */
+function modal(html){
+  const r=$('#modalRoot');
+  r.innerHTML=`<div class="modal fade show d-block" tabindex="-1"><div class="modal-dialog modal-dialog-centered modal-dialog-scrollable"><div class="modal-content">${html}</div></div></div><div class="modal-backdrop fade show"></div>`;
+  const m=$('.modal',r);m.onmousedown=e=>{if(e.target===m)closeModal()};
+  return $('.modal-content',r);
+}
+function closeModal(){$('#modalRoot').innerHTML=''}
+function confirmBox(title,msg,okLabel,cb){
+  const m=modal(`<div class="p-4"><h5>${esc(title)}</h5><p class="muted small">${esc(msg)}</p><div class="d-flex gap-2"><button class="btn btn-outline-secondary flex-fill" id="cBatal">Batal</button><button class="btn btn-danger flex-fill" id="cOk">${esc(okLabel)}</button></div></div>`);
+  $('#cBatal',m).onclick=closeModal;$('#cOk',m).onclick=()=>{closeModal();cb()};
+}
+function openDetail(id){
+  const users=getUsers();const u=users.find(x=>x.id===id);if(!u)return;
+  const s=getState(id)||{};
+  const isPrem=s.premium&&s.premium.until>Date.now();
+  const mastered=Object.keys(s.mastered||{});
+  const badges=Object.keys(s.badges||{});
+  const log=(s.answerLog||[]).slice().reverse();
+  const m=modal(`<div class="p-4">
+   <div class="d-flex align-items-center gap-3 mb-3">
+    <div class="av" style="width:52px;height:52px;font-size:16px">${initials(u.nama)}</div>
+    <div class="flex-fill"><h5 class="mb-0">${esc(u.nama)}</h5><p class="small muted mb-0">${esc(u.email)} · ${esc(u.jurusan)} · Kelas ${esc(u.kelas)}</p><p class="small muted mb-0">${esc(u.sekolah)}</p></div>
+    <button class="btn-close" id="mClose"></button></div>
+
+   ${u.kartuJurusan?`<div class="sec-label">Kartu Identitas Jurusan</div><img src="${u.kartuJurusan}" style="max-width:100%;max-height:200px;border-radius:12px;border:1px solid var(--line)">`:'<p class="small muted">Belum ada foto kartu diunggah.</p>'}
+   <div class="d-flex gap-2 mt-2">
+    <button class="btn btn-sm ${u.kartuVerified?'btn-outline-secondary':'btn-success'}" id="btnVerify">${u.kartuVerified?'Batalkan verifikasi':'Verifikasi kartu'}</button>
+   </div>
+
+   <div class="sec-label">Status Akun</div>
+   <div class="row g-2">
+    <div class="col-6 col-md-3"><div class="stat-box"><b>${(s.lifetime||0).toLocaleString('id-ID')}</b><small>Poin</small></div></div>
+    <div class="col-6 col-md-3"><div class="stat-box"><b>${s.streak||0}</b><small>Streak</small></div></div>
+    <div class="col-6 col-md-3"><div class="stat-box"><b>${mastered.length}</b><small>Kompetensi</small></div></div>
+    <div class="col-6 col-md-3"><div class="stat-box"><b>${badges.length}</b><small>Lencana</small></div></div>
+   </div>
+   <p class="small mt-2 mb-0">${isPrem?`<span class="pill pill-y">Premium aktif · ${Math.ceil((s.premium.until-Date.now())/864e5)} hari lagi</span> (berlaku sampai ${fmtDate(s.premium.until)})`:`<span class="pill">Akun Gratis</span>`}</p>
+   ${isPrem?`<button class="btn btn-sm btn-outline-danger mt-2" id="btnRevoke">Cabut Premium</button>`:''}
+
+   <div class="sec-label d-flex justify-content-between align-items-center">Log Jawaban Soal (${log.length})<button class="btn btn-sm btn-outline-secondary" id="btnExportLog">Ekspor CSV</button></div>
+   <div class="log-tbl">
+   ${log.length?`<table class="table table-sm"><thead><tr><th>Waktu</th><th>Mode</th><th>Soal</th><th>Jawaban</th><th>Status</th></tr></thead><tbody>
+    ${log.slice(0,100).map(l=>`<tr><td class="small">${fmtDateTime(l.ts)}</td><td class="small">${esc(l.mode)}</td><td class="small ans-txt">${esc(l.q||'')}</td><td class="small ans-txt">${esc(l.chosen||'')}${l.benar?'':`<div class="sel-ok mt-1">Benar: ${esc(l.correctText||'')}</div>`}</td><td>${l.benar?'<span class="pill pill-ok">Benar</span>':'<span class="pill pill-bad">Salah</span>'}</td></tr>`).join('')}
+   </tbody></table>${log.length>100?`<p class="small muted">Menampilkan 100 terbaru dari ${log.length}. Ekspor CSV untuk melihat semua.</p>`:''}`
+   :'<p class="small muted">Belum ada jawaban soal yang tercatat untuk siswa ini.</p>'}
+   </div>
+
+   <div class="sec-label">Riwayat Penukaran Kuota</div>
+   ${(s.redeem||[]).length?`<ul class="small mb-0">${s.redeem.slice(0,10).map(r=>`<li>${fmtDate(r.t)} — ${r.mb>=1024?(r.mb/1024)+' GB':r.mb+' MB'} (${esc(r.op)})</li>`).join('')}</ul>`:'<p class="small muted">Belum ada penukaran.</p>'}
+
+   <div class="sec-label text-danger">Zona Berbahaya</div>
+   <button class="btn btn-sm btn-outline-danger" id="btnDelete">Hapus akun siswa ini</button>
+  </div>`);
+  $('#mClose',m).onclick=closeModal;
+  $('#btnVerify',m).onclick=()=>{
+    u.kartuVerified=!u.kartuVerified;saveUsers(users.map(x=>x.id===u.id?u:x));
+    toast(u.kartuVerified?'Kartu diverifikasi':'Verifikasi dibatalkan','ok');closeModal();paintTable();
+  };
+  const br=$('#btnRevoke',m);if(br)br.onclick=()=>confirmBox('Cabut Premium',`Masa Premium ${esc(u.nama)} akan diakhiri sekarang juga.`,'Cabut Premium',()=>{
+    s.premium.until=0;LS.set(stKey(u.id),s);toast('Premium dicabut','ok');paintTable();
+  });
+  $('#btnExportLog',m).onclick=()=>{
+    const head=['Waktu','Mode','Jurusan','Kompetensi','Soal','JawabanDipilih','JawabanBenar','Status'];
+    const rows=log.map(l=>[new Date(l.ts).toLocaleString('id-ID'),l.mode,l.jur,l.kid,l.q,l.chosen,l.correctText,l.benar?'Benar':'Salah']);
+    downloadCSV(`jawaban-${u.nama.replace(/\s+/g,'-')}.csv`,[head,...rows]);
+  };
+  $('#btnDelete',m).onclick=()=>confirmBox('Hapus Akun Siswa',`Akun ${esc(u.nama)} beserta seluruh progres belajarnya akan dihapus permanen dari browser ini. Tindakan ini tidak bisa dibatalkan.`,'Hapus permanen',()=>{
+    saveUsers(users.filter(x=>x.id!==u.id));LS.del(stKey(u.id));
+    toast('Akun siswa dihapus','ok');paintTable();
+  });
+}
+
+/* =====================================================
+   BOOT
+   ===================================================== */
+window.addEventListener('storage',e=>{if(e.key&&(e.key==='tv_users'||e.key.startsWith('tv_state_'))&&document.getElementById('tblBody')){paintTable();fillAnswerFilters();paintAnswers()}});
+(async function boot(){
+  await ensureSeedAdmin();
+  const email=getSession();
+  if(email){const a=getAdmins().find(x=>x.email===email);if(a){ADM=a;renderDashboard();return}}
+  renderLogin();
+})();
+</script>
+</body>
+</html>

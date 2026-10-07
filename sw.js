@@ -1,10 +1,14 @@
-const CACHE = 'tramvior-v1';
+const CACHE = 'tramvior-v2';
 const ASSETS = [
   './',
   './index.html',
   './manifest.json',
-  './icons/icon-192.png',
-  './icons/icon-512.png'
+  './img/logotramvior144.png',
+  './img/logotramvior192.png',
+  './img/logotramvior512.png',
+  './img/on1.png',
+  './img/on2.png',
+  './img/on3.png'
 ];
 
 self.addEventListener('install', e => {
@@ -23,17 +27,33 @@ self.addEventListener('activate', e => {
   self.clients.claim();
 });
 
-// Cache-first for our own assets (app shell), so learning content
-// (all embedded in index.html) works offline. Network calls to other
-// origins (fonts, CDN) pass through and fall back to cache if offline.
 self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET') return;
 
+  const sameOrigin = req.url.startsWith(self.location.origin);
+  const isPage = req.mode === 'navigate' || req.destination === 'document';
+
+  // Halaman HTML: network-first, supaya perubahan kode langsung terbaca.
+  // Kalau offline, pakai cache.
+  if (sameOrigin && isPage) {
+    e.respondWith(
+      fetch(req).then(res => {
+        if (res && res.status === 200) {
+          const clone = res.clone();
+          caches.open(CACHE).then(c => c.put(req, clone));
+        }
+        return res;
+      }).catch(() => caches.match(req).then(r => r || caches.match('./index.html')))
+    );
+    return;
+  }
+
+  // Aset lain (gambar, font, CDN): cache-first, update di belakang layar.
   e.respondWith(
     caches.match(req).then(cached => {
       const fetchPromise = fetch(req).then(res => {
-        if (res && res.status === 200 && req.url.startsWith(self.location.origin)) {
+        if (res && res.status === 200 && sameOrigin) {
           const clone = res.clone();
           caches.open(CACHE).then(c => c.put(req, clone));
         }
