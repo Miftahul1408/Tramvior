@@ -299,6 +299,37 @@ small,.small{font-size:12px}
 .seg2{display:flex;background:var(--sky);padding:4px;border-radius:14px;margin-bottom:14px}
 .seg2 button{flex:1;border:0;background:none;padding:9px;border-radius:11px;font-weight:600;color:var(--muted);min-height:40px;font-size:13px}
 .seg2 button.on{background:var(--card);color:var(--blue);box-shadow:var(--shadow)}
+/* Skill Passport */
+.passport-card{background:#fff;color:#14213D;border:2px solid var(--navy);border-radius:20px;overflow:hidden}
+.passport-inner{padding:18px 16px;text-align:center}
+.passport-brand{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;text-align:left}
+.passport-brand-left{display:flex;align-items:center;gap:10px}
+.passport-logo{width:40px;height:40px;object-fit:contain}
+.passport-brand-name{font-weight:700;color:#0B2A6F;letter-spacing:.04em}
+.passport-brand-sub{display:block;font-size:10.5px;color:#FF8A1F;font-weight:500}
+.passport-badge{width:40px;height:40px;border-radius:50%;background:#FFC93C;color:#3A2A00;display:flex;align-items:center;justify-content:center}
+.passport-title{font-size:20px;font-weight:700;color:#0B2A6F;letter-spacing:.08em}
+.passport-subtitle{font-size:12px;color:#5D6B8C;margin-bottom:14px}
+.passport-given{font-size:12px;color:#5D6B8C}
+.passport-name{font-size:22px;font-weight:700;color:#0B2A6F;margin:2px 0}
+.passport-school{font-size:12px;color:#5D6B8C;margin-bottom:14px}
+.passport-competency{background:#E8F0FF;border-radius:14px;padding:12px;margin-bottom:12px}
+.passport-competency-label{font-size:11.5px;color:#5D6B8C}
+.passport-competency-name{font-size:16px;font-weight:600;color:#0B2A6F;margin:2px 0 6px}
+.passport-jurusan{display:inline-block;background:#FFC93C;color:#3A2A00;padding:2px 12px;border-radius:99px;font-size:12px;font-weight:600}
+.passport-score-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.passport-score-box{background:#F3F6FF;border-radius:12px;padding:10px}
+.passport-score-label,.passport-meta-label{display:block;font-size:11px;color:#5D6B8C}
+.passport-score{font-size:26px;font-weight:700;color:#0B2A6F}
+.passport-result{font-weight:700;font-size:13px}
+.passport-result.mem{color:#12B76A}.passport-result.cukup{color:#B45500}.passport-result.kurang{color:#E5484D}
+.passport-meta{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.passport-meta-item{text-align:left}
+.passport-meta-value{font-weight:600;font-size:13px}
+.passport-footer{display:flex;justify-content:space-between;border-top:1px dashed #E2E8F6;padding-top:10px;font-size:11.5px;color:#5D6B8C;text-align:left}
+.passport-actions{display:grid;gap:8px;margin-top:12px}
+.passport-note{font-size:12px;color:var(--muted);margin-top:12px}
+#pdfPassportRender{position:fixed;left:-9999px;top:0;width:520px;background:#fff}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -349,6 +380,15 @@ small,.small{font-size:12px}
 <symbol id="i-phone" viewBox="0 0 24 24"><rect x="7" y="2" width="10" height="20" rx="2.5"/><path d="M11 18h2"/></symbol>
 <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></symbol>
 <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+<symbol id="i-headphones" viewBox="0 0 24 24"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="14" width="4" height="6" rx="1.5"/><rect x="17" y="14" width="4" height="6" rx="1.5"/></symbol>
+<symbol id="i-file" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 12h6M9 16h6"/></symbol>
+<symbol id="i-credit-card" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h4"/></symbol>
+<symbol id="i-megaphone" viewBox="0 0 24 24"><path d="M3 10v4l11 5V5z"/><path d="M14 8a4 4 0 0 1 0 8M6 14l1 6h3l-1-5"/></symbol>
+<symbol id="i-coffee" viewBox="0 0 24 24"><path d="M4 8h13v6a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5z"/><path d="M17 10h2a2 2 0 0 1 0 4h-2M8 3v2M12 3v2"/></symbol>
+<symbol id="i-message" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></symbol>
+<symbol id="i-presentation" viewBox="0 0 24 24"><path d="M3 4h18M5 4v11h14V4M12 15v5M8 20h8"/></symbol>
+<symbol id="i-box" viewBox="0 0 24 24"><path d="M3 7l9-4 9 4v10l-9 4-9-4z"/><path d="M3 7l9 4 9-4M12 11v10"/></symbol>
+<symbol id="i-loader" viewBox="0 0 24 24"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M18.4 5.6l-2.8 2.8M8.4 15.6l-2.8 2.8"/></symbol>
 </svg>
 
 <div id="netBar" class="netbar" hidden></div>
@@ -384,6 +424,10 @@ small,.small{font-size:12px}
    DATA KONTEN (contoh) per jurusan
    ===================================================== */
 const FREE_CAP=150,FREE_SOAL=5,FREE_AI=5,FREE_VID=2,PRICE=15000;
+/* Jumlah soal per sesi */
+const LATIHAN_N=35;   /* Latihan Soal biasa */
+const UJIAN_N=50;     /* Mode Ujian */
+const UJIAN_SEC=45;   /* detik per soal pada Mode Ujian */
 const JUR={
   'Akuntansi':{ic:'calc',c:'#2F6BFF',dk:false},
   'Otomotif':{ic:'wrench',c:'#F27A0A',dk:true},
@@ -997,7 +1041,7 @@ const KOMP=[
     {q:'Jika total beban lebih besar daripada total pendapatan, perusahaan mengalami...',o:['Laba','Rugi','Modal bertambah','Aset bertambah'],a:1,e:['Rugi terjadi ketika jumlah beban lebih besar daripada pendapatan.','Selisih antara beban dan pendapatan menunjukkan besarnya kerugian perusahaan.','Dengan demikian, perusahaan mengalami rugi ketika pendapatan tidak mampu menutupi seluruh beban.']},
     {q:'Manakah yang termasuk akun pendapatan?',o:['Beban Gaji','Beban Sewa','Pendapatan Jasa','Peralatan'],a:2,e:['Pendapatan Jasa merupakan penghasilan yang diperoleh perusahaan dari kegiatan memberikan jasa.','Beban Gaji dan Beban Sewa merupakan akun beban.','Peralatan termasuk aset perusahaan.']},
     {q:'Manakah yang termasuk akun beban?',o:['Pendapatan Jasa','Modal','Beban Gaji','Utang Usaha'],a:2,e:['Beban Gaji merupakan biaya yang dikeluarkan perusahaan untuk membayar tenaga kerja.','Beban merupakan pengorbanan ekonomi yang terjadi untuk memperoleh pendapatan.','Karena itu, Beban Gaji termasuk akun beban dalam laporan laba rugi.']},
-    {q:'Pendapatan perusahaan Rp25.000.000, Beban Gaji Rp6.000.000, Beban Sewa Rp4.000.000, dan Beban Listrik Rp2.000.000. Laba bersih perusahaan adalah...',o:['Rp10.000.000','Rp11.000.000','Rp13.000.000','Rp23.000.000'],a:1,e:['Total beban = Rp6.000.000 + Rp4.000.000 + Rp2.000.000 = Rp12.000.000.','Laba bersih = Pendapatan - Total Beban.','Rp25.000.000 - Rp12.000.000 = Rp13.000.000. Namun, karena pilihan jawaban yang sesuai adalah Rp13.000.000, jawaban yang benar adalah pilihan C.']}
+    {q:'Pendapatan perusahaan Rp25.000.000, Beban Gaji Rp6.000.000, Beban Sewa Rp4.000.000, dan Beban Listrik Rp2.000.000. Laba bersih perusahaan adalah...',o:['Rp10.000.000','Rp11.000.000','Rp13.000.000','Rp23.000.000'],a:2,e:['Total beban = Rp6.000.000 + Rp4.000.000 + Rp2.000.000 = Rp12.000.000.','Laba bersih = Pendapatan - Total Beban.','Rp25.000.000 - Rp12.000.000 = Rp13.000.000. Jadi laba bersih perusahaan adalah Rp13.000.000.']}
   ],
   ringkas:[
     'Laporan laba rugi menunjukkan hasil usaha perusahaan selama periode tertentu',
@@ -2998,6 +3042,171 @@ const SIM=[
 ];
 
 /* ---------- Kuota, operator, papan peringkat, misi ---------- */
+/* =====================================================
+   BANK SOAL TAMBAHAN (hanya untuk Latihan Soal & Mode Ujian)
+   Gabungan bank ini + soal tiap kompetensi >= 50 soal per jurusan.
+   ===================================================== */
+const Q=(q,o,a,e)=>({q,o,a,e});
+const BANK={
+
+'Otomotif':[
+Q('Fungsi utama busi pada mesin bensin adalah...',['Mendinginkan ruang bakar','Memercikkan api untuk membakar campuran udara dan bensin','Menyaring udara masuk','Mengisi muatan aki'],1,['Mesin bensin membutuhkan percikan api untuk memulai pembakaran.','Busi menerima arus tegangan tinggi dari koil.','Percikan busi membakar campuran udara dan bensin di ruang bakar.']),
+Q('Urutan langkah kerja mesin 4 tak yang benar adalah...',['Isap, kompresi, usaha, buang','Kompresi, isap, buang, usaha','Usaha, isap, buang, kompresi','Buang, usaha, isap, kompresi'],0,['Campuran udara dan bahan bakar dihisap lebih dulu.','Campuran dimampatkan, dibakar, lalu mendorong piston.','Terakhir gas sisa pembakaran dibuang. Urutannya: isap, kompresi, usaha, buang.']),
+Q('Satu siklus kerja mesin 4 tak membutuhkan berapa putaran poros engkol?',['1 putaran','2 putaran','3 putaran','4 putaran'],1,['Satu siklus terdiri dari 4 langkah piston.','Setiap 2 langkah piston, poros engkol berputar 1 kali.','Jadi 4 langkah membutuhkan 2 putaran poros engkol.']),
+Q('Fungsi filter udara pada kendaraan adalah...',['Menyaring oli','Menyaring bensin','Menyaring debu dari udara yang masuk ke mesin','Mendinginkan udara knalpot'],2,['Udara yang masuk ke mesin mengandung debu.','Debu dapat mempercepat keausan silinder dan piston.','Filter udara menahan debu sebelum udara masuk ruang bakar.']),
+Q('Fungsi radiator pada sistem pendingin adalah...',['Melepas panas dari cairan pendingin ke udara','Menyimpan bensin cadangan','Menaikkan tekanan oli','Menyaring udara pendingin'],0,['Cairan pendingin menyerap panas dari mesin.','Cairan panas mengalir ke radiator.','Di radiator panas dilepas ke udara sehingga cairan kembali dingin.']),
+Q('Ban dengan tekanan angin terlalu rendah dapat menyebabkan...',['Konsumsi bahan bakar lebih boros dan ban cepat aus','Mesin lebih bertenaga','Rem menjadi lebih pakem','Umur ban lebih panjang'],0,['Ban kurang angin membuat bidang kontak ke jalan terlalu lebar.','Hambatan putar meningkat sehingga bahan bakar lebih boros.','Tepi ban juga lebih cepat aus dan berisiko rusak.']),
+Q('Tegangan aki 12 V yang sehat dan terisi penuh saat mesin mati sekitar...',['12,6 V','6 V','24 V','3 V'],0,['Aki 12 V terdiri dari 6 sel yang masing-masing sekitar 2,1 V.','6 sel x 2,1 V = 12,6 V.','Tegangan jauh di bawah itu menandakan aki lemah atau perlu diisi.']),
+Q('Fungsi kopling pada kendaraan adalah...',['Menyaring oli','Memutus dan menghubungkan tenaga mesin ke transmisi','Menyalakan lampu','Mendinginkan rem'],1,['Tenaga mesin perlu disalurkan ke roda secara bertahap.','Saat pindah gigi, tenaga harus diputus sebentar.','Kopling berfungsi memutus dan menghubungkan putaran mesin ke transmisi.']),
+Q('Pada sepeda motor, rantai dan gir berfungsi untuk...',['Meneruskan tenaga dari mesin ke roda belakang','Mengatur tekanan oli','Menyaring udara','Menyalakan lampu rem'],0,['Mesin menghasilkan putaran pada gir depan.','Rantai membawa putaran itu ke gir belakang.','Gir belakang memutar roda sehingga motor bergerak.']),
+Q('Fungsi shock absorber adalah...',['Menaikkan tekanan ban','Meredam getaran dan kejutan dari permukaan jalan','Mengatur putaran mesin','Mendinginkan oli'],1,['Jalan yang tidak rata menimbulkan hentakan pada roda.','Pegas menyerap hentakan tetapi masih memantul.','Shock absorber meredam pantulan agar kendaraan nyaman dan stabil.']),
+Q('Komponen yang mencampur udara dan bensin pada mesin sistem konvensional adalah...',['Karburator','Radiator','Dinamo starter','Kampas kopling'],0,['Mesin membutuhkan campuran udara dan bensin dengan perbandingan tertentu.','Pada sistem konvensional, campuran dibuat oleh karburator.','Pada sistem injeksi tugas ini dilakukan oleh injektor dan ECU.']),
+Q('Pada sistem injeksi bahan bakar, komponen yang menyemprotkan bensin adalah...',['Injektor','Busi','Termostat','Rocker arm'],0,['Sistem injeksi menyalurkan bensin bertekanan.','Bensin dikabutkan ke saluran masuk atau ruang bakar.','Komponen penyemprotnya disebut injektor.']),
+Q('Piston berfungsi untuk...',['Menerima tekanan pembakaran dan meneruskannya ke poros engkol','Mengalirkan oli ke filter','Menyimpan bahan bakar','Mengatur tegangan aki'],0,['Pembakaran menghasilkan tekanan yang mendorong piston ke bawah.','Piston terhubung ke poros engkol lewat batang piston.','Gerak lurus piston diubah menjadi gerak putar.']),
+Q('Ring piston berfungsi untuk...',['Merapatkan kompresi dan mengatur lapisan oli pada dinding silinder','Menyalakan busi','Mengisi aki','Menyaring udara'],0,['Ring piston terpasang pada alur piston.','Ring merapatkan celah sehingga tekanan kompresi tidak bocor.','Ring juga mengikis oli berlebih dari dinding silinder.']),
+Q('Termostat pada sistem pendingin berfungsi untuk...',['Mengatur aliran cairan pendingin sesuai suhu kerja mesin','Menambah tekanan oli','Menyaring bensin','Menyalakan kipas knalpot'],0,['Mesin harus cepat mencapai suhu kerja yang ideal.','Termostat tertutup saat mesin dingin dan terbuka saat panas.','Dengan begitu suhu mesin tetap stabil.']),
+Q('Pada sepeda motor, CDI berfungsi untuk...',['Mengatur saat terjadinya percikan api busi','Mendinginkan mesin','Menyaring oli','Mengatur tekanan ban'],0,['Pembakaran harus terjadi pada waktu yang tepat.','CDI mengatur waktu pengapian sesuai putaran mesin.','Hasilnya kerja mesin halus dan tenaga optimal.']),
+Q('Koil pengapian berfungsi untuk...',['Menaikkan tegangan listrik menjadi tinggi untuk busi','Menurunkan tegangan aki','Menyaring udara','Mengisi oli'],0,['Busi membutuhkan tegangan puluhan ribu volt agar memercik.','Aki hanya menyediakan 12 V.','Koil menaikkan tegangan tersebut hingga cukup tinggi.']),
+Q('Regulator (kiprok) pada sistem pengisian berfungsi untuk...',['Mengatur tegangan pengisian agar tidak berlebihan','Menyalakan lampu rem','Mengatur tekanan bensin','Mendinginkan aki'],0,['Alternator menghasilkan tegangan yang naik saat putaran mesin naik.','Tegangan berlebih dapat merusak aki dan lampu.','Regulator menjaga tegangan tetap pada batas aman.']),
+Q('Alternator atau spul berfungsi untuk...',['Menghasilkan listrik saat mesin hidup','Menyaring oli','Mengatur rem','Menyemprotkan bensin'],0,['Saat mesin hidup, kendaraan butuh listrik terus-menerus.','Alternator atau spul mengubah putaran mesin menjadi listrik.','Listrik itu dipakai untuk kelistrikan dan mengisi aki.']),
+Q('Sekering (fuse) pada rangkaian kelistrikan berfungsi untuk...',['Melindungi rangkaian dari arus yang berlebihan','Menambah tegangan','Menyimpan listrik','Menaikkan putaran mesin'],0,['Arus berlebih dapat membuat kabel panas dan terbakar.','Sekering memiliki kawat tipis yang putus saat arus melebihi batas.','Putusnya sekering memutus arus sehingga komponen lain terlindungi.']),
+Q('Alat yang digunakan untuk mengukur tegangan, arus, dan hambatan listrik adalah...',['Multimeter','Feeler gauge','Kunci momen','Dongkrak'],0,['Pemeriksaan kelistrikan membutuhkan alat ukur listrik.','Multimeter dapat mengukur tegangan, arus, dan hambatan.','Alat lain pada pilihan dipakai untuk celah, torsi, dan mengangkat kendaraan.']),
+Q('Alat yang dipakai untuk mengencangkan baut dengan torsi tertentu adalah...',['Kunci momen (torque wrench)','Tang kombinasi','Obeng min','Palu karet'],0,['Baut penting harus dikencangkan sesuai spesifikasi.','Terlalu kencang dapat merusak ulir, terlalu longgar dapat lepas.','Kunci momen mengukur torsi pengencangan secara tepat.']),
+Q('Satuan torsi pengencangan baut yang umum dipakai adalah...',['Nm (Newton meter)','Liter','Volt','Derajat Celsius'],0,['Torsi adalah gaya putar pada suatu jarak.','Gaya diukur dalam Newton dan jarak dalam meter.','Jadi satuan torsi adalah Newton meter (Nm).']),
+Q('Alat yang sesuai untuk menyetel celah katup (valve clearance) adalah...',['Feeler gauge','Multimeter','Pompa angin','Kunci shock'],0,['Celah katup berukuran sangat kecil, dalam persepuluh milimeter.','Celah itu diukur dengan lembaran logam tipis berukuran tertentu.','Alatnya disebut feeler gauge.']),
+Q('Jangka sorong digunakan untuk...',['Mengukur dimensi benda seperti diameter dan kedalaman','Mengukur tegangan aki','Mengukur tekanan ban','Mengukur suhu mesin'],0,['Jangka sorong memiliki rahang tetap dan rahang geser.','Alat ini dapat mengukur diameter luar, diameter dalam, dan kedalaman.','Ketelitiannya cukup baik untuk komponen mesin.']),
+Q('Asap knalpot berwarna kebiruan pada mesin bensin menandakan...',['Oli mesin ikut terbakar di ruang bakar','Campuran bensin terlalu miskin','Busi terlalu baru','Aki penuh'],0,['Warna asap dapat menjadi petunjuk kondisi mesin.','Asap kebiruan muncul ketika oli ikut terbakar.','Penyebab umum adalah ring piston atau seal klep yang aus.']),
+Q('Asap knalpot berwarna hitam pekat biasanya menandakan...',['Campuran bahan bakar terlalu kaya','Campuran terlalu miskin','Oli terlalu bersih','Aki lemah'],0,['Asap hitam berasal dari bahan bakar yang tidak terbakar sempurna.','Hal ini terjadi bila bensin terlalu banyak dibanding udara.','Periksa filter udara dan sistem bahan bakar.']),
+Q('Tujuan rantai motor disetel dengan benar adalah...',['Agar tegangan rantai sesuai sehingga tenaga tersalur baik dan komponen tidak cepat aus','Agar suara knalpot lebih keras','Agar bensin lebih irit saja','Agar ban lebih keras'],0,['Rantai terlalu kendur dapat lepas atau menghentak.','Rantai terlalu kencang membebani bantalan dan gir.','Penyetelan yang tepat menjaga tenaga tersalur halus dan komponen awet.']),
+Q('Fungsi katup (klep) pada mesin adalah...',['Membuka dan menutup saluran masuk dan saluran buang','Menyaring oli','Memutar roda','Mengisi aki'],0,['Ruang bakar perlu memasukkan campuran dan membuang gas sisa.','Katup masuk membuka saat langkah isap.','Katup buang membuka saat langkah buang.']),
+Q('Fungsi transmisi pada kendaraan adalah...',['Mengubah perbandingan gigi sesuai kecepatan dan beban','Menyalakan busi','Menyimpan oli','Mengatur lampu sein'],0,['Kebutuhan tenaga berbeda saat menanjak dan saat melaju cepat.','Transmisi menyediakan beberapa perbandingan gigi.','Dengan begitu tenaga mesin dimanfaatkan secara efisien.']),
+Q('Fungsi diferensial pada kendaraan roda empat adalah...',['Memungkinkan roda kiri dan kanan berputar dengan kecepatan berbeda saat berbelok','Menaikkan tekanan oli','Menyaring udara','Mengatur suhu mesin'],0,['Saat berbelok, roda luar menempuh jarak lebih jauh.','Roda luar harus berputar lebih cepat daripada roda dalam.','Diferensial memungkinkan perbedaan putaran tersebut.']),
+Q('Bantalan (bearing) berfungsi untuk...',['Mengurangi gesekan pada bagian yang berputar','Menyaring bensin','Menaikkan tegangan listrik','Menyalakan lampu'],0,['Poros yang berputar menimbulkan gesekan.','Bearing memakai bola atau rol agar putaran lebih ringan.','Hasilnya gesekan dan keausan berkurang.']),
+Q('Komponen utama rem tromol adalah...',['Drum (tromol) dan sepatu rem','Piringan dan kaliper','Busi dan koil','Rantai dan gir'],0,['Rem tromol bekerja di dalam drum yang berputar bersama roda.','Sepatu rem menekan permukaan dalam drum.','Gesekan itu memperlambat putaran roda.']),
+Q('Fungsi filter oli adalah...',['Menyaring kotoran dan partikel logam dari oli','Menyaring udara','Mendinginkan radiator','Menaikkan oktan'],0,['Oli membawa partikel aus dan kotoran dari dalam mesin.','Filter oli menahan partikel tersebut.','Oli yang bersih menjaga komponen mesin tetap terlindungi.']),
+Q('Pompa bensin berfungsi untuk...',['Menyalurkan bahan bakar dari tangki ke mesin','Menyaring oli','Mendinginkan piston','Mengisi aki'],0,['Bahan bakar disimpan di tangki.','Mesin membutuhkan pasokan bahan bakar bertekanan.','Pompa bensin mengalirkannya dari tangki ke sistem bahan bakar.']),
+Q('Lampu indikator oli menyala saat mesin hidup. Tindakan yang tepat adalah...',['Segera hentikan dan matikan mesin lalu periksa level atau tekanan oli','Terus berkendara agar sampai tujuan','Menambah kecepatan','Mematikan lampu indikator'],0,['Lampu oli menandakan tekanan oli rendah.','Mesin tanpa pelumasan dapat rusak berat dalam waktu singkat.','Matikan mesin dengan aman lalu periksa oli.']),
+Q('Pemeriksaan tekanan ban sebaiknya dilakukan saat ban dalam kondisi...',['Dingin','Panas setelah berkendara jauh','Basah','Terkena sinar matahari langsung'],0,['Tekanan udara naik ketika ban panas.','Pembacaan saat panas tidak akurat.','Ukur tekanan saat ban dingin agar sesuai spesifikasi.']),
+Q('Angka oktan bahan bakar menunjukkan...',['Ketahanan bahan bakar terhadap detonasi atau ngelitik','Banyaknya kandungan air','Kekentalan bahan bakar','Warna bahan bakar'],0,['Bahan bakar dapat terbakar sebelum waktunya jika oktan kurang.','Hal itu menimbulkan bunyi ngelitik.','Angka oktan lebih tinggi lebih tahan terhadap detonasi.']),
+Q('Bunyi ngelitik pada mesin bensin dapat disebabkan oleh...',['Bahan bakar dengan oktan lebih rendah dari kebutuhan mesin','Aki penuh','Ban terlalu keras','Lampu rem menyala'],0,['Ngelitik terjadi karena pembakaran dini.','Salah satu penyebabnya adalah oktan bahan bakar terlalu rendah.','Gunakan bahan bakar sesuai rekomendasi pabrikan.']),
+Q('Kompresor pada AC mobil berfungsi untuk...',['Memampatkan refrigeran agar bersirkulasi','Menyaring udara kabin','Mengisi aki','Menyalakan lampu'],0,['AC bekerja dengan sirkulasi refrigeran.','Refrigeran perlu ditekan agar suhu dan tekanannya naik.','Tugas itu dilakukan oleh kompresor.']),
+Q('Saat mesin mati, aki berfungsi untuk...',['Menyuplai listrik untuk starter dan kelistrikan','Menghasilkan listrik tanpa batas','Mendinginkan mesin','Menyaring udara'],0,['Aki menyimpan energi listrik.','Energi itu dipakai untuk memutar starter dan menyalakan lampu.','Saat mesin hidup, alternator yang mengisi ulang aki.']),
+Q('Pengencangan baut roda mobil sebaiknya dilakukan dengan pola...',['Bersilang','Berurutan searah jarum jam saja','Acak tanpa aturan','Hanya satu baut'],0,['Pengencangan tidak boleh hanya satu sisi.','Pola bersilang membuat tekanan pada pelek merata.','Pelek duduk rata dan tidak miring.']),
+Q('Oli bekas sebaiknya...',['Ditampung dan diserahkan ke tempat penampungan limbah berbahaya','Dibuang ke selokan','Dibuang ke tanah','Dibakar di tempat terbuka'],0,['Oli bekas mencemari tanah dan air.','Oli termasuk limbah B3.','Tampung dalam wadah tertutup lalu serahkan ke pengelola limbah.']),
+Q('Sebelum bekerja di bawah kendaraan yang diangkat dengan dongkrak, kita harus...',['Memasang penyangga (jack stand) yang kuat','Hanya mengandalkan dongkrak','Menyalakan mesin','Melepas semua roda'],0,['Dongkrak dapat turun atau tergelincir.','Keselamatan mengharuskan penyangga tambahan.','Pasang jack stand sebelum masuk ke bawah kendaraan.']),
+Q('Contoh alat pelindung diri (APD) saat bekerja di bengkel adalah...',['Sarung tangan, kacamata pelindung, dan sepatu keselamatan','Sandal jepit','Perhiasan dan cincin','Topi kain longgar saja'],0,['Bengkel memiliki risiko percikan, benda tajam, dan bahan kimia.','APD melindungi tangan, mata, dan kaki.','Sarung tangan, kacamata, dan sepatu keselamatan termasuk APD.']),
+Q('Kompresi mesin yang rendah dapat disebabkan oleh...',['Ring piston atau katup yang bocor','Busi baru','Lampu rem menyala','Aki penuh'],0,['Kompresi membutuhkan ruang bakar yang rapat.','Ring piston atau katup bocor melepas tekanan.','Akibatnya tenaga mesin menurun.'])
+],
+
+'Perhotelan':[
+Q('Departemen hotel yang menerima tamu, mengelola reservasi, dan pendaftaran tamu adalah...',['Front Office','Kitchen','Engineering','Purchasing'],0,['Front Office berada di area resepsionis.','Departemen ini menangani reservasi, check-in, dan check-out.','Staf front office juga menjadi kontak pertama tamu.']),
+Q('Departemen yang bertanggung jawab atas kebersihan dan kerapian kamar adalah...',['Housekeeping','Front Office','Accounting','Security'],0,['Kamar harus bersih sebelum ditempati tamu.','Tugas membersihkan dan merapikan kamar ada di Housekeeping.','Housekeeping juga merawat area publik hotel.']),
+Q('Food and Beverage Service bertugas...',['Menyajikan makanan dan minuman kepada tamu','Memperbaiki listrik','Menjaga keamanan','Mengelola gaji karyawan'],0,['Tamu hotel membutuhkan layanan makan dan minum.','Staf F&B Service menyajikan pesanan di restoran dan bar.','Tugas ini berbeda dengan dapur yang memasak makanan.']),
+Q('Arti istilah room rate adalah...',['Tarif kamar','Nomor kamar','Jumlah tamu','Jadwal kebersihan'],0,['Rate berarti tarif atau harga.','Room rate adalah harga kamar per malam.','Tarif dapat berbeda sesuai tipe kamar dan musim.']),
+Q('Reservasi adalah...',['Pemesanan kamar sebelum tamu tiba','Pembayaran saat check-out','Pembersihan kamar','Kunjungan tamu tanpa janji'],0,['Tamu dapat memesan kamar jauh hari.','Pemesanan itu disebut reservasi.','Reservasi membantu hotel menyiapkan kamar.']),
+Q('Kamar twin adalah kamar dengan...',['Dua tempat tidur terpisah','Satu tempat tidur besar untuk dua orang','Satu tempat tidur untuk satu orang','Tiga tempat tidur susun'],0,['Tipe kamar dibedakan berdasarkan jenis tempat tidur.','Twin berarti kembar, yaitu dua tempat tidur terpisah.','Double adalah satu tempat tidur besar untuk dua orang.']),
+Q('Tamu yang memiliki reservasi tetapi tidak datang dan tidak membatalkan disebut...',['No show','Walk-in','Early arrival','VIP'],0,['Hotel sudah menyiapkan kamar untuk tamu tersebut.','Tamu tidak datang tanpa pemberitahuan.','Kondisi ini disebut no show.']),
+Q('Early check-in berarti...',['Tamu tiba dan masuk kamar sebelum jam check-in standar','Tamu pulang lebih cepat','Tamu membatalkan kamar','Tamu pindah kamar'],0,['Hotel memiliki jam check-in standar.','Early check-in berarti tamu tiba lebih awal dari jam itu.','Layanan ini bergantung pada ketersediaan kamar.']),
+Q('Late check-out berarti...',['Tamu meninggalkan kamar setelah jam check-out standar','Tamu tiba terlambat','Tamu memesan kamar malam hari','Tamu menolak membayar'],0,['Jam check-out hotel biasanya sekitar tengah hari.','Late check-out memberi izin menggunakan kamar lebih lama.','Biasanya dapat dikenakan biaya tambahan.']),
+Q('Petugas yang membawakan barang bawaan tamu ke kamar disebut...',['Bellboy atau bellman','Chef','Cashier','Steward'],0,['Tamu membawa koper saat tiba.','Petugas bellboy atau bellman membantu mengantar barang.','Mereka juga mengantar tamu menuju kamar.']),
+Q('Concierge bertugas...',['Memberikan informasi dan membantu kebutuhan layanan tamu','Memasak hidangan','Mencuci seprai','Memperbaiki AC'],0,['Tamu sering butuh informasi wisata dan transportasi.','Concierge membantu mengatur layanan tersebut.','Contohnya reservasi tiket, taksi, atau restoran.']),
+Q('Room service adalah layanan...',['Pesanan makanan dan minuman diantar ke kamar tamu','Pembersihan area lobi','Penjemputan bandara','Pemeriksaan tagihan'],0,['Tamu bisa memesan makanan lewat telepon.','Pesanan diantar langsung ke kamar.','Layanan ini disebut room service.']),
+Q('Tanda Do Not Disturb (DND) di pintu kamar berarti...',['Tamu tidak ingin diganggu sehingga staf tidak boleh masuk tanpa alasan penting','Kamar kosong','Kamar siap dibersihkan','Kamar rusak'],0,['Tamu memasang tanda saat ingin beristirahat.','Staf harus menghormati privasi tamu.','Housekeeping tidak masuk kecuali ada keadaan darurat sesuai prosedur.']),
+Q('Terjemahan "Selamat malam" saat menyapa tamu pada sore hingga malam hari adalah...',['Good evening','Good morning','Good night','Good afternoon'],0,['Sapaan disesuaikan dengan waktu.','Saat petang atau malam sebagai salam bertemu, dipakai good evening.','Good night biasanya dipakai saat berpamitan tidur.']),
+Q('Arti kalimat "How may I help you?" adalah...',['Ada yang bisa saya bantu?','Kapan Anda tiba?','Berapa lama Anda menginap?','Di mana kamar Anda?'],0,['How may I help you adalah kalimat sopan menawarkan bantuan.','Frasa ini sering dipakai di resepsionis.','Artinya: ada yang bisa saya bantu?']),
+Q('Guest folio adalah...',['Catatan tagihan dan transaksi tamu selama menginap','Daftar menu restoran','Jadwal kebersihan','Kunci kamar'],0,['Setiap pengeluaran tamu perlu dicatat.','Catatan itu berisi tarif kamar dan biaya tambahan.','Dokumen tersebut disebut guest folio.']),
+Q('Deposit pada saat check-in berfungsi sebagai...',['Uang jaminan untuk biaya tambahan selama menginap','Hadiah untuk tamu','Biaya parkir saja','Pengganti kartu identitas'],0,['Tamu mungkin memakai layanan tambahan seperti minibar.','Hotel meminta uang jaminan di awal.','Sisa deposit dikembalikan saat check-out sesuai ketentuan.']),
+Q('Sebuah hotel memiliki 80 kamar dan 60 kamar terjual. Tingkat hunian (occupancy rate) adalah...',['75%','60%','80%','25%'],0,['Occupancy = kamar terjual dibagi kamar tersedia x 100%.','60 dibagi 80 = 0,75.','Jadi tingkat huniannya 75%.']),
+Q('Hotel memiliki 90 kamar dan 45 kamar terisi. Occupancy rate hotel adalah...',['50%','45%','90%','25%'],0,['Gunakan rumus kamar terisi dibagi total kamar x 100%.','45 dibagi 90 = 0,5.','Jadi occupancy rate hotel 50%.']),
+Q('Kunci induk (master key) hotel sebaiknya...',['Disimpan dan dikontrol ketat oleh petugas berwenang','Dibawa pulang oleh semua staf','Dipinjamkan ke tamu','Ditinggal di meja resepsionis'],0,['Master key dapat membuka banyak kamar.','Penyalahgunaan dapat membahayakan keamanan tamu.','Karena itu penggunaannya dikontrol dan dicatat.']),
+Q('Linen kamar hotel meliputi...',['Seprai, sarung bantal, dan handuk','Kursi dan meja','Televisi dan AC','Lampu dan saklar'],0,['Linen adalah perlengkapan kain di hotel.','Contohnya seprai, sarung bantal, selimut, dan handuk.','Linen harus bersih dan rapi untuk setiap tamu.']),
+Q('Turn down service adalah layanan...',['Menyiapkan kamar untuk tidur malam, misalnya membuka selimut','Mengganti kasur','Membersihkan lobi','Mengecek tagihan'],0,['Layanan ini dilakukan pada sore atau malam hari.','Staf merapikan kamar dan membuka selimut.','Tujuannya agar tamu nyaman saat akan tidur.']),
+Q('Fungsi troli housekeeping adalah...',['Membawa linen, amenities, dan alat kebersihan ke kamar','Mengangkut tamu','Menyimpan uang','Memasak makanan'],0,['Housekeeping membersihkan banyak kamar.','Perlengkapan dibawa agar efisien.','Troli memuat linen, amenities, dan alat bersih.']),
+Q('Dalam penggunaan bahan pembersih, hal yang benar adalah...',['Tidak mencampur bahan kimia pembersih sembarangan','Mencampur semua pembersih agar lebih kuat','Memindahkan ke botol tanpa label','Mencium bahan untuk mengecek'],0,['Beberapa bahan pembersih berbahaya jika dicampur.','Contohnya pemutih dengan produk yang mengandung amonia.','Selalu ikuti label dan prosedur K3.']),
+Q('Minibar di kamar hotel perlu diperiksa saat...',['Kamar dibersihkan atau tamu check-out untuk mencatat konsumsi','Tamu baru datang','Hotel tutup','Tidak perlu diperiksa'],0,['Tamu dapat memakai isi minibar.','Konsumsi dibebankan ke tagihan tamu.','Karena itu minibar dicek dan dicatat.']),
+Q('Banquet adalah layanan...',['Penyelenggaraan acara besar seperti pesta dan pertemuan','Pembersihan kamar','Penitipan barang','Reservasi tiket'],0,['Hotel sering menjadi tempat acara pernikahan atau rapat.','Layanan makanan dan tata ruang untuk acara besar disebut banquet.','Banquet berada di bawah F&B.']),
+Q('Menurut standar penyajian, makanan umumnya disajikan dari sisi...',['Kiri tamu','Kanan tamu','Belakang tamu','Depan tamu'],0,['Standar pelayanan restoran mengatur sisi penyajian.','Makanan disajikan dari sebelah kiri tamu.','Minuman disajikan dari sebelah kanan tamu.']),
+Q('Hidangan pembuka dalam menu disebut...',['Appetizer','Main course','Dessert','Beverage'],0,['Menu disusun berurutan.','Hidangan pembuka bertujuan membangkitkan selera.','Istilahnya appetizer.']),
+Q('Hidangan penutup yang disajikan di akhir makan disebut...',['Dessert','Appetizer','Soup','Starter'],0,['Urutan menu diakhiri hidangan manis.','Hidangan penutup umumnya manis.','Namanya dessert.']),
+Q('Pada pengaturan meja (table setting), mata pisau diletakkan dengan arah...',['Menghadap ke piring','Menjauhi piring','Menghadap ke tamu','Bebas'],0,['Penataan alat makan mengikuti standar.','Pisau diletakkan di sisi kanan piring.','Mata pisau menghadap ke arah piring.']),
+Q('Serbet makan atau napkin berfungsi untuk...',['Membersihkan mulut dan tangan serta melindungi pakaian tamu','Menghias lantai','Mengelap kendaraan','Pengganti taplak'],0,['Napkin disediakan di meja makan.','Tamu memakainya untuk menyeka mulut dan tangan.','Napkin juga melindungi pakaian dari tumpahan.']),
+Q('Saat tamu menyampaikan keluhan, langkah pertama yang tepat adalah...',['Mendengarkan dengan sabar dan tidak memotong','Membantah keluhan','Mengabaikan','Memindahkan kesalahan ke rekan kerja'],0,['Tamu yang komplain ingin didengar.','Mendengarkan menunjukkan rasa hormat.','Setelah itu minta maaf dan tawarkan solusi.']),
+Q('Barang tamu yang tertinggal di kamar harus...',['Dicatat dan diserahkan ke bagian lost and found','Disimpan sendiri','Dibuang','Dibagikan ke staf'],0,['Barang tamu bukan milik staf.','Barang dicatat sesuai prosedur.','Lost and found menyimpannya agar dapat dikembalikan.']),
+Q('Upselling dalam pelayanan hotel adalah...',['Menawarkan produk atau kamar dengan tingkat lebih tinggi kepada tamu','Menurunkan harga kamar','Membatalkan reservasi','Menolak permintaan tamu'],0,['Staf dapat menawarkan opsi yang lebih baik.','Contohnya upgrade kamar atau paket sarapan.','Penawaran dilakukan sopan dan sesuai kebutuhan tamu.']),
+Q('Hospitality berarti...',['Keramahtamahan dalam melayani tamu','Aturan keamanan','Sistem pembayaran','Jadwal kerja'],0,['Industri perhotelan melayani orang.','Sikap ramah dan peduli menjadi inti layanan.','Itulah yang disebut hospitality.']),
+Q('Penampilan (grooming) petugas hotel yang baik adalah...',['Rapi, bersih, dan mengenakan seragam sesuai standar','Berpakaian bebas','Berbau parfum berlebihan','Berantakan'],0,['Staf adalah wajah hotel.','Penampilan rapi memberi kesan profesional.','Seragam dan kebersihan pribadi harus sesuai standar.']),
+Q('Saat menjawab telepon hotel, sebaiknya...',['Mengucap salam, menyebut nama hotel dan nama sendiri','Langsung menutup','Menjawab dengan nada malas','Bertanya siapa dulu tanpa salam'],0,['Telepon adalah kesan pertama.','Salam dan identitas menunjukkan profesionalitas.','Contohnya: selamat pagi, Hotel Solo, dengan Rani, ada yang bisa dibantu?']),
+Q('Registration card berfungsi untuk...',['Mencatat data tamu saat check-in','Mencatat menu makanan','Menghitung gaji','Mengatur jadwal housekeeping'],0,['Tamu perlu terdaftar secara resmi.','Registration card berisi identitas dan lama menginap.','Data ini juga dipakai untuk administrasi hotel.']),
+Q('Night audit adalah...',['Pemeriksaan dan rekap transaksi hotel pada akhir hari','Pembersihan kamar malam hari','Penyajian makan malam','Pemeriksaan listrik'],0,['Transaksi hotel berlangsung sepanjang hari.','Pada malam hari, transaksi dicocokkan dan direkap.','Prosedur ini disebut night audit.']),
+Q('Property Management System (PMS) hotel digunakan untuk...',['Mengelola reservasi, kamar, dan tagihan tamu secara terkomputerisasi','Memasak makanan','Mengatur AC','Mengganti lampu'],0,['Hotel membutuhkan data yang rapi.','PMS mengelola reservasi, status kamar, dan tagihan.','Sistem ini mempercepat pelayanan.']),
+Q('Klasifikasi hotel berbintang di Indonesia berkisar dari...',['Bintang 1 sampai bintang 5','Bintang 0 sampai 10','Bintang 3 sampai 7','Bintang A sampai E'],0,['Hotel dinilai menurut fasilitas dan pelayanan.','Nilai dinyatakan dalam bintang.','Rentangnya dari bintang satu hingga bintang lima.']),
+Q('Saat alarm kebakaran berbunyi, staf hotel sebaiknya...',['Membantu tamu evakuasi lewat tangga darurat dan tidak memakai lift','Menggunakan lift agar cepat','Menunggu di kamar','Mengabaikan alarm'],0,['Lift berbahaya saat kebakaran.','Tangga darurat adalah jalur evakuasi.','Staf membantu mengarahkan tamu dengan tenang.']),
+Q('Status kamar Vacant Clean (VC) berarti...',['Kamar kosong dan sudah bersih siap dijual','Kamar terisi dan kotor','Kamar rusak','Kamar dipesan tapi belum datang'],0,['Status kamar membantu koordinasi front office dan housekeeping.','Vacant berarti kosong, clean berarti bersih.','Kamar VC siap untuk tamu berikutnya.']),
+Q('Status kamar Out of Order (OOO) berarti...',['Kamar tidak dapat dijual karena rusak atau sedang diperbaiki','Kamar siap dijual','Kamar ditempati tamu','Kamar baru dibersihkan'],0,['Kamar tertentu bisa mengalami kerusakan.','Kamar seperti itu tidak boleh dijual.','Statusnya disebut Out of Order.']),
+Q('Wake-up call adalah layanan...',['Membangunkan tamu pada waktu yang diminta lewat telepon','Pengantaran sarapan','Pembersihan kamar','Pengantaran koper'],0,['Tamu kadang harus bangun pada jam tertentu.','Hotel menghubungi kamar tamu pada waktu itu.','Layanan ini disebut wake-up call.']),
+Q('Barang berharga tamu sebaiknya disimpan di...',['Safety deposit box','Meja lobi','Laci kamar tanpa kunci','Troli housekeeping'],0,['Uang dan dokumen penting perlu diamankan.','Hotel menyediakan tempat penyimpanan khusus.','Namanya safety deposit box.'])
+],
+
+'Tata Boga':[
+Q('Mise en place berarti...',['Menyiapkan semua bahan dan alat sebelum mulai memasak','Menghias hidangan','Mencuci peralatan','Menyajikan makanan'],0,['Istilah ini berasal dari bahasa Prancis.','Artinya segala sesuatu pada tempatnya.','Di dapur berarti bahan dan alat disiapkan sebelum memasak.']),
+Q('Teknik memasak bahan dalam cairan mendidih disebut...',['Merebus (boiling)','Menumis','Memanggang','Menggoreng'],0,['Cairan mendidih mencapai sekitar 100 derajat Celsius.','Bahan dimasak di dalam cairan tersebut.','Teknik ini disebut merebus atau boiling.']),
+Q('Simmering adalah memasak dalam cairan dengan suhu...',['Sedikit di bawah titik didih','Dingin','Tepat 200 derajat Celsius','Di bawah suhu ruang'],0,['Simmering lebih lembut dibanding boiling.','Cairan hanya mengeluarkan gelembung kecil.','Suhunya sedikit di bawah titik didih.']),
+Q('Blanching adalah teknik...',['Mencelup bahan sebentar ke air mendidih lalu langsung ke air es','Memasak lama dalam minyak','Memanggang di oven','Mengasap daging'],0,['Blanching dilakukan sebentar saja.','Bahan dicelup ke air mendidih.','Lalu segera didinginkan di air es untuk menghentikan pemasakan.']),
+Q('Saute adalah teknik memasak...',['Menumis cepat dengan sedikit minyak pada api besar','Merebus lama','Mengukus','Memanggang dalam oven'],0,['Saute berasal dari kata melompat dalam bahasa Prancis.','Bahan dimasak cepat dengan sedikit lemak.','Api yang digunakan cukup besar.']),
+Q('Braising adalah teknik memasak...',['Dengan sedikit cairan dalam wadah tertutup dan waktu lama','Dengan minyak sangat banyak','Tanpa panas sama sekali','Hanya dengan uap'],0,['Braising biasa dipakai untuk daging keras.','Bahan dimasak pelan dengan sedikit cairan.','Panci ditutup sehingga daging menjadi empuk.']),
+Q('Roasting adalah memasak dengan...',['Panas kering dalam oven','Air mendidih','Uap air','Minyak banyak'],0,['Roasting memakai udara panas dalam oven.','Tidak ada cairan banyak yang digunakan.','Bagian luar bahan menjadi kecokelatan.']),
+Q('Mengukus (steaming) memasak bahan dengan...',['Uap air panas','Minyak panas','Api langsung','Garam'],0,['Bahan diletakkan di atas air mendidih.','Uap panas yang mematangkan bahan.','Gizi lebih terjaga dibanding direbus.']),
+Q('Poaching adalah merebus bahan dalam cairan dengan suhu...',['Rendah sekitar di bawah titik didih','Sangat tinggi','Beku','Tanpa cairan'],0,['Poaching dipakai untuk bahan lembut seperti telur dan ikan.','Suhu cairan dijaga rendah.','Bahan matang lembut tanpa pecah.']),
+Q('Saus dasar berwarna putih yang dibuat dari susu dan roux adalah...',['Bechamel','Hollandaise','Espagnole','Tomat'],0,['Roux adalah campuran tepung dan lemak.','Roux ditambah susu menghasilkan saus putih.','Saus ini disebut bechamel.']),
+Q('Saus dasar dari kuning telur dan mentega cair adalah...',['Hollandaise','Bechamel','Veloute','Espagnole'],0,['Saus ini berupa emulsi.','Bahannya kuning telur dan mentega cair.','Namanya saus hollandaise.']),
+Q('Roux adalah...',['Campuran tepung dan lemak yang dimasak sebagai pengental','Campuran gula dan air','Kaldu sayur','Campuran garam dan merica'],0,['Roux dibuat dari tepung dan lemak.','Campuran dimasak sampai mencapai warna tertentu.','Fungsinya mengentalkan saus dan sup.']),
+Q('Stock atau kaldu dibuat dengan...',['Merebus tulang atau bahan beraroma dalam air untuk mengambil rasa','Menggoreng tepung','Mengocok telur','Memanggang roti'],0,['Kaldu menjadi dasar sup dan saus.','Bahan seperti tulang dan sayuran direbus lama.','Rasa dan aroma larut ke dalam air.']),
+Q('Tingkat kematangan steak yang paling matang adalah...',['Well done','Rare','Medium rare','Blue'],0,['Steak memiliki beberapa tingkat kematangan.','Rare paling mentah.','Well done adalah yang paling matang.']),
+Q('Suhu internal aman untuk daging ayam setelah dimasak adalah sekitar...',['74 derajat Celsius','45 derajat Celsius','50 derajat Celsius','30 derajat Celsius'],0,['Ayam rentan bakteri seperti salmonella.','Bakteri mati pada suhu tinggi.','Suhu internal 74 derajat Celsius dianggap aman.']),
+Q('Emulsi adalah...',['Campuran minyak dan air yang stabil','Campuran gula dan garam','Air mendidih','Adonan roti'],0,['Minyak dan air biasanya tidak menyatu.','Dengan pengemulsi keduanya dapat bercampur stabil.','Contohnya mayones.']),
+Q('Fungsi ragi pada pembuatan roti adalah...',['Mengembangkan adonan melalui fermentasi yang menghasilkan gas','Memberi warna merah','Mengawetkan','Mengasinkan'],0,['Ragi adalah mikroorganisme.','Ragi memakan gula dan menghasilkan gas karbon dioksida.','Gas membuat adonan mengembang.']),
+Q('Baking powder berfungsi sebagai...',['Pengembang kimia pada kue','Pewarna','Pemanis','Pengawet'],0,['Baking powder bereaksi saat terkena cairan dan panas.','Reaksi menghasilkan gas.','Gas membuat kue mengembang.']),
+Q('Fungsi telur dalam adonan kue adalah...',['Mengikat, mengembangkan, dan melembutkan','Hanya memberi rasa asin','Hanya mendinginkan','Menghilangkan warna'],0,['Telur memiliki protein dan lemak.','Protein membantu mengikat adonan.','Telur juga membantu pengembangan dan kelembutan.']),
+Q('Satu sendok makan (tablespoon) setara dengan sekitar...',['3 sendok teh','1 sendok teh','5 sendok teh','10 sendok teh'],0,['Takaran dapur memiliki konversi baku.','1 sendok makan sekitar 15 ml.','1 sendok teh sekitar 5 ml, jadi 1 sendok makan sama dengan 3 sendok teh.']),
+Q('Satu kilogram setara dengan...',['1000 gram','100 gram','10.000 gram','500 gram'],0,['Kilo berarti seribu.','1 kilogram sama dengan 1000 gram.','Konversi ini penting saat menimbang bahan.']),
+Q('Resep untuk 4 porsi memakai 200 gram tepung. Untuk 10 porsi dibutuhkan tepung...',['500 gram','400 gram','800 gram','2000 gram'],0,['Cari kebutuhan per porsi: 200 dibagi 4 = 50 gram.','Kalikan dengan 10 porsi.','50 x 10 = 500 gram.']),
+Q('Harga jual hidangan Rp40.000 dengan food cost 35%. Biaya bahan baku hidangan tersebut adalah...',['Rp14.000','Rp35.000','Rp5.000','Rp26.000'],0,['Food cost = persentase x harga jual.','35% x Rp40.000.','0,35 x 40.000 = Rp14.000.']),
+Q('Resep baku (standardized recipe) berfungsi untuk...',['Menjaga rasa, porsi, dan kualitas tetap konsisten','Membuat rasa selalu berbeda','Menghemat listrik','Menambah jumlah koki'],0,['Resep baku mencantumkan bahan, takaran, dan langkah.','Setiap koki mengikuti panduan yang sama.','Hasilnya konsisten dalam rasa dan porsi.']),
+Q('HACCP adalah...',['Sistem pengendalian keamanan pangan berdasarkan analisis bahaya dan titik kendali kritis','Jenis pisau dapur','Teknik menggoreng','Jenis saus'],0,['Keamanan pangan perlu dikelola sistematis.','HACCP mengidentifikasi bahaya pada setiap tahap.','Lalu menetapkan titik kendali untuk mencegahnya.']),
+Q('Penutup kepala (hairnet atau topi koki) dipakai untuk...',['Mencegah rambut jatuh ke makanan','Menambah gaya','Menghangatkan kepala','Mengurangi suara'],0,['Rambut adalah sumber kontaminasi fisik.','Penutup kepala menahan rambut.','Makanan tetap bersih dan aman.']),
+Q('Cara mencairkan daging beku yang aman adalah...',['Di dalam lemari pendingin atau di bawah air dingin mengalir','Dibiarkan semalaman di suhu ruang','Diletakkan di dekat kompor','Direndam air hangat berjam-jam'],0,['Suhu ruang berada di zona bahaya.','Bakteri cepat berkembang di zona itu.','Gunakan chiller atau air dingin mengalir.']),
+Q('Suhu penyimpanan di freezer sebaiknya...',['Minus 18 derajat Celsius atau lebih rendah','5 derajat Celsius','10 derajat Celsius','Sama dengan suhu ruang'],0,['Freezer menahan pertumbuhan bakteri.','Makanan beku disimpan pada suhu sangat rendah.','Standar umumnya minus 18 derajat Celsius atau lebih rendah.']),
+Q('Pisau yang paling serbaguna untuk memotong, mengiris, dan mencincang di dapur adalah...',['Pisau chef','Pisau roti','Pisau mentega','Pisau buah kecil saja'],0,['Dapur memakai berbagai pisau.','Pisau chef berbilah lebar dan panjang.','Pisau ini dipakai untuk banyak pekerjaan potong.']),
+Q('Pisau roti (bread knife) memiliki ciri...',['Bilah bergerigi','Bilah sangat pendek','Tanpa mata pisau','Bilah melengkung ke dalam'],0,['Roti memiliki kulit keras dan isi lembut.','Bilah bergerigi memotong tanpa menekan isi.','Itulah ciri pisau roti.']),
+Q('Alat yang dipakai untuk menajamkan pisau antara lain...',['Batu asah dan sharpening steel','Spatula','Whisk','Colander'],0,['Pisau tajam lebih aman dan efisien.','Pisau diasah dengan alat khusus.','Contohnya batu asah dan sharpening steel.']),
+Q('Whisk digunakan untuk...',['Mengocok atau mengaduk adonan cair dan telur','Memotong sayur','Mengiris roti','Menimbang bahan'],0,['Whisk berbentuk kawat melengkung.','Bentuk ini memasukkan udara saat mengocok.','Cocok untuk telur, krim, dan adonan cair.']),
+Q('Colander digunakan untuk...',['Meniriskan air dari bahan makanan','Mengocok telur','Menumbuk bumbu','Mengukur suhu'],0,['Colander berlubang-lubang.','Air mengalir keluar melalui lubang.','Dipakai untuk meniriskan pasta atau sayur.']),
+Q('Garnish adalah...',['Hiasan pada hidangan yang umumnya dapat dimakan','Alat makan','Bahan pengawet','Piring saji'],0,['Penampilan hidangan penting.','Garnish mempercantik tampilan.','Biasanya dibuat dari bahan yang bisa dimakan.']),
+Q('Istilah al dente pada pasta berarti...',['Matang tetapi masih sedikit kenyal saat digigit','Sangat lembek','Mentah','Gosong'],0,['Pasta tidak boleh terlalu lembek.','Al dente berarti sampai ke gigi dalam bahasa Italia.','Pasta matang tetapi masih sedikit kenyal.']),
+Q('Reaksi Maillard adalah...',['Pencokelatan makanan akibat reaksi gula dan protein pada suhu tinggi','Pembekuan makanan','Pembusukan','Penguapan air'],0,['Reaksi terjadi saat makanan dipanaskan.','Gula dan protein bereaksi pada suhu tinggi.','Hasilnya warna cokelat dan aroma khas.']),
+Q('Karamelisasi terjadi ketika...',['Gula dipanaskan hingga berubah warna cokelat','Garam dilarutkan','Telur dikocok','Air membeku'],0,['Gula meleleh saat dipanaskan.','Pemanasan lanjutan mengubah warnanya.','Hasilnya adalah karamel.']),
+Q('Marinasi bertujuan untuk...',['Meresapkan bumbu dan membantu mengempukkan bahan','Membekukan bahan','Menghilangkan semua rasa','Mengeringkan bahan'],0,['Bahan direndam dalam bumbu cair.','Bumbu meresap ke dalam bahan.','Beberapa marinasi juga membuat daging lebih empuk.']),
+Q('Dalam brigade dapur, pemimpin tertinggi dapur adalah...',['Executive chef','Commis','Steward','Waiter'],0,['Dapur besar disusun dalam hierarki.','Pemimpin tertinggi bertanggung jawab atas seluruh dapur.','Jabatan itu disebut executive chef.']),
+Q('Adonan encer yang dapat dituang disebut...',['Batter','Dough','Crust','Fondant'],0,['Adonan terbagi menurut kekentalan.','Adonan encer atau kental cair disebut batter.','Dough adalah adonan kental yang diuleni.']),
+Q('Meringue dibuat dari...',['Putih telur dan gula yang dikocok','Kuning telur dan mentega','Tepung dan air','Susu dan garam'],0,['Meringue berupa busa yang kaku.','Putih telur dikocok dengan gula.','Hasilnya ringan dan mengembang.']),
+Q('Saat minyak di wajan terbakar, tindakan yang benar adalah...',['Matikan api dan tutup wajan dengan penutup, jangan disiram air','Menyiram dengan air','Meniup api','Memindahkan wajan ke lantai'],0,['Air membuat minyak terbakar memercik dan menyebar.','Api butuh oksigen.','Tutup wajan dan matikan kompor untuk memadamkan api.']),
+Q('Pertolongan pertama luka bakar ringan adalah...',['Mengalirkan air dingin pada area luka','Mengoleskan pasta gigi','Mengoleskan mentega','Memecahkan lepuhan'],0,['Panas perlu segera diturunkan.','Air dingin mengalir membantu mendinginkan kulit.','Jangan memakai bahan yang tidak dianjurkan pada luka.']),
+Q('Contoh alergen makanan yang umum adalah...',['Kacang, susu, telur, dan makanan laut','Garam dan air','Udara','Minyak goreng saja'],0,['Sebagian orang alergi terhadap bahan tertentu.','Reaksi alergi bisa berbahaya.','Kacang, susu, telur, dan seafood termasuk alergen umum.']),
+Q('Sayur sebaiknya dicuci dengan...',['Air bersih yang mengalir','Air kotor','Air hangat berminyak','Tidak dicuci'],0,['Sayur dapat membawa tanah dan kotoran.','Air mengalir membantu membuangnya.','Cuci sebelum dipotong agar zat gizi tidak larut.']),
+Q('Sumber protein hewani adalah...',['Telur dan ikan','Nasi dan roti','Minyak dan gula','Garam dan air'],0,['Protein penting untuk membangun tubuh.','Bahan hewani kaya protein.','Telur dan ikan termasuk sumbernya.'])
+]
+
+};
+
+/* Kumpulan soal satu jurusan: soal kompetensi + bank tambahan, tanpa duplikat */
+function jurPool(jur){
+  const seen=new Set();
+  return [
+    ...KOMP.filter(k=>k.jur===jur).flatMap(k=>k.soal.map(s=>({...s,kid:k.id}))),
+    ...(BANK[jur]||[]).map(s=>({...s,kid:''}))
+  ].filter(s=>{if(seen.has(s.q))return false;seen.add(s.q);return true});
+}
+
 const PKG=[{mb:200,pts:300},{mb:500,pts:650},{mb:1024,pts:1200},{mb:2048,pts:2200}];
 const OPS=['Telkomsel','Indosat','XL'];
 const ptsToMB=p=>Math.floor(p*2/3);
@@ -3492,7 +3701,7 @@ function homeH(){
    <div class="sec-h"><h3>Jalan pintas</h3></div>
    <div class="grid2">
     <a class="sc" href="#/tutor"><div class="ic-w">${ic('sparkle')}</div><b>AI Tutor</b><small>Tanya materi kapan saja</small></a>
-    <a class="sc" href="#/soal"><div class="ic-w">${ic('pencil')}</div><b>Latihan Soal</b><small>${premium()?'Latihan dan mode ujian':'Sisa '+Math.max(0,FREE_SOAL-S.daily.soal)+' soal gratis'}</small></a>
+    <a class="sc" href="#/soal"><div class="ic-w">${ic('pencil')}</div><b>Latihan Soal</b><small>${premium()?LATIHAN_N+' soal latihan, '+UJIAN_N+' soal ujian':'Sisa '+Math.max(0,FREE_SOAL-S.daily.soal)+' soal gratis'}</small></a>
     <a class="sc" href="#/kerja"><div class="ic-w">${ic('briefcase')}</div><b>Dunia Kerja</b><small>Latihan wawancara</small>${!premium()?`<span class="lk">${ic('lock','sm')}</span>`:''}</a>
     <a class="sc" href="#/kuota"><div class="ic-w">${ic('signal')}</div><b>Tukar Kuota</b><small>Poin jadi kuota data</small></a>
    </div>
@@ -3531,7 +3740,7 @@ function belajarH(){
      </div></article>`).join('')}
     <div class="sec-h"><h3>Latihan Soal</h3></div>
     <div class="card-t">
-     <p class="muted small mb-2">${premium()?'Bank soal penuh tanpa batas, dengan pembahasan langkah demi langkah dan Mode Ujian berwaktu.':`Gratis ${FREE_SOAL} soal per hari. Sisa hari ini: <b>${left}</b>.`}</p>
+     <p class="muted small mb-2">${premium()?`Latihan ${LATIHAN_N} soal dan Mode Ujian ${UJIAN_N} soal berwaktu, dengan pembahasan langkah demi langkah.`:`Gratis ${FREE_SOAL} soal per hari. Sisa hari ini: <b>${left}</b>.`}</p>
      <div class="bar mb-3"><i style="width:${premium()?100:Math.min(100,S.daily.soal/FREE_SOAL*100)}%"></i></div>
      <a class="btn btn-t w-100" href="#/soal">Buka Latihan Soal</a>
     </div>
@@ -3709,17 +3918,17 @@ function soalB(kid){
 }
 function runSoal(mode,kid){
   CLEAN();CLEAN=()=>{};
-  const pool=KOMP.filter(k=>k.jur===U.jurusan).flatMap(k=>k.soal.map(s=>({...s,kid:k.id})));
+  const pool=jurPool(U.jurusan);
   const left=premium()?99:Math.max(0,FREE_SOAL-S.daily.soal);
   if(mode!=='ujian'&&!premium()&&left<=0&&!kid){upgrade(`Latihan gratis dibatasi ${FREE_SOAL} soal per hari. Coba lagi besok atau buka Premium.`);go('belajar');return}
   let qs;
-  if(mode==='ujian')qs=shuffle(pool).slice(0,8);
+  if(mode==='ujian')qs=shuffle(pool).slice(0,UJIAN_N);
   else if(kid){const k=KOMP.find(x=>x.id===kid);qs=k?k.soal.map(s=>({...s,kid})).slice(0,left||k.soal.length):[]}
-  else qs=shuffle(pool).slice(0,Math.min(5,left));
+  else qs=shuffle(pool).slice(0,Math.min(LATIHAN_N,left));
   qs=qs.map(mix);
   const box=$('#qbox');
   if(!qs.length){box.innerHTML=`<div class="empty">${ic('pencil')}<b>Belum ada soal</b>Pilih kompetensi dari menu Belajar.</div>`;return}
-  let i=0,ok=0,tid=null,rem=qs.length*30;const rec=[];
+  let i=0,ok=0,tid=null,rem=qs.length*UJIAN_SEC;const rec=[];
   CLEAN=()=>clearInterval(tid);
   if(mode==='ujian'){
     const tt=()=>{$('#qtime').innerHTML=`${ic('clock','sm')} ${Math.floor(rem/60)}:${pad(rem%60)}`};tt();
