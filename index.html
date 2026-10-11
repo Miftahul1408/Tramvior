@@ -3804,7 +3804,7 @@ function videoB(id){
   const k=KOMP.find(x=>x.id===id);if(!k)return;
   const vid=ytId(k.yt);
   const SIMT=Math.max(20,k.durMin*6);
-  let t=0,total=vid?0:SIMT,playing=false,waiting=false,tm=null,right=0,player=null,finished=false,fb=false;
+  let t=0,total=vid?0:SIMT,playing=false,waiting=false,tm=null,right=0,player=null,finished=false,fb=false,fbOn=false;
   const doneCP=new Set();
   const bar=$('#vsBar'),time=$('#vTime');let play=$('#vPlay');
   const fm=s=>Math.floor(s/60)+':'+pad(Math.floor(s)%60);
@@ -3829,6 +3829,7 @@ function videoB(id){
       $('#cpFb').innerHTML=h;
       $('#cpNext').onclick=()=>{
         $('#vCP').innerHTML='';waiting=false;
+        if(fb){const nx=doneCP.size;if(nx<k.cp.length){waiting=true;showCP(nx)}else finish();return}
         if(vid&&!fb){player.playVideo()}
         else{if(t>=total)finish();else resume()}
       };
@@ -3844,7 +3845,7 @@ function videoB(id){
     if(right===k.cp.length)confetti(50);
     $('#vAgain').onclick=()=>{
       t=0;doneCP.clear();right=0;finished=false;$('#vEnd').innerHTML='';
-      if(vid&&!fb){player.seekTo(0);player.playVideo()}else{draw();setBtn()}
+      if(fb){fbReset()}else if(vid){player.seekTo(0);player.playVideo()}else{draw();setBtn()}
     };
   }
 
@@ -3897,10 +3898,26 @@ function videoB(id){
     const ctl=$('.vctl');
     if(ctl&&!$('#vPlay')){
       ctl.insertAdjacentHTML('afterbegin',`<button class="btn btn-o" id="vPlay"></button>`);
-      ctl.insertAdjacentHTML('afterend',`<p class="small muted mb-2">${msg} ${showFrame?'Kalau video tidak tampil, ':''}<a href="${yurl}" target="_blank" rel="noopener">buka di YouTube</a>. Setelah menonton, tekan tombol di atas untuk memulai kuis jeda.</p>`);
     }
-    play=$('#vPlay');play.onclick=onPlayClick;
-    draw();setBtn();
+    if(time)time.textContent='';
+    const barBox=bar&&bar.parentElement;
+    if(barBox){
+      barBox.style.display='none';
+      const info=barBox.nextElementSibling;
+      if(info)info.innerHTML=`${msg} ${showFrame?'Kalau video tidak tampil, ':''}<a href="${yurl}" target="_blank" rel="noopener">buka di YouTube</a>. Tonton videonya sampai selesai, lalu tekan tombol di atas untuk mengerjakan kuis jeda.`;
+    }
+    play=$('#vPlay');play.onclick=startFbQuiz;total=0;
+    fbReset();
+  }
+  function fbReset(){
+    fbOn=false;waiting=false;finished=false;right=0;t=0;doneCP.clear();
+    $('#vCP').innerHTML='';
+    play.disabled=false;play.innerHTML=ic('play')+' Saya sudah menonton, mulai kuis jeda';
+  }
+  function startFbQuiz(){
+    if(fbOn||waiting)return;
+    fbOn=true;waiting=true;play.disabled=true;
+    showCP(0);
   }
   function onPlayClick(){
     if(waiting)return;
