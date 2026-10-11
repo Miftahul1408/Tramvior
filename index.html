@@ -3773,12 +3773,14 @@ const ytId=v=>{
 };
 function loadYT(){
   return new Promise(res=>{
-    if(window.YT&&YT.Player)return res();
+    if(window.YT&&YT.Player)return res(true);
     const prev=window.onYouTubeIframeAPIReady;
-    window.onYouTubeIframeAPIReady=()=>{prev&&prev();res()};
+    window.onYouTubeIframeAPIReady=()=>{prev&&prev();res(true)};
     if(!document.getElementById('ytapi')){
-      const s=document.createElement('script');s.id='ytapi';s.src='https://www.youtube.com/iframe_api';document.head.appendChild(s);
+      const s=document.createElement('script');s.id='ytapi';s.src='https://www.youtube.com/iframe_api';
+      s.onerror=()=>res(false);document.head.appendChild(s);
     }
+    setTimeout(()=>res(!!(window.YT&&YT.Player)),8000);
   });
 }
 function videoH(id){
@@ -3786,7 +3788,7 @@ function videoH(id){
   const vid=ytId(k.yt);
   const q=encodeURIComponent(k.ytQuery);
   const ytBlock=vid
-    ?`<div class="yt-wrap"><div id="ytPlayer"></div></div>`
+    ?`<div class="yt-wrap"><div id="ytPlayer"></div><div id="ytMsg" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:#fff;font-size:13px;text-align:center;padding:16px;pointer-events:none">Memuat video…</div></div>`
     :`<div class="yt-wrap" style="background:${j.c}"><a href="https://www.youtube.com/results?search_query=${q}" target="_blank" rel="noopener" style="color:#fff;text-align:center;padding:20px;text-decoration:none">${ic('video','lg')}<br><b>Cari video di YouTube</b><br><small style="opacity:.85">${esc(k.ytQuery)}</small></a></div>`;
   return `${sub(k.judul,'belajar')}<div class="px">
    <div class="vstage" style="--jc:${j.c}">
@@ -3802,9 +3804,9 @@ function videoB(id){
   const k=KOMP.find(x=>x.id===id);if(!k)return;
   const vid=ytId(k.yt);
   const SIMT=Math.max(20,k.durMin*6);
-  let t=0,total=vid?0:SIMT,playing=false,waiting=false,tm=null,right=0,player=null,finished=false;
+  let t=0,total=vid?0:SIMT,playing=false,waiting=false,tm=null,right=0,player=null,finished=false,fb=false;
   const doneCP=new Set();
-  const bar=$('#vsBar'),play=$('#vPlay'),time=$('#vTime');
+  const bar=$('#vsBar'),time=$('#vTime');let play=$('#vPlay');
   const fm=s=>Math.floor(s/60)+':'+pad(Math.floor(s)%60);
   CLEAN=()=>{clearInterval(tm);if(player&&player.destroy){try{player.destroy()}catch(e){}}};
   function draw(){if(!total)return;bar.style.width=Math.min(100,t/total*100)+'%';time.textContent=fm(t)+' / '+fm(total)}
@@ -3827,7 +3829,7 @@ function videoB(id){
       $('#cpFb').innerHTML=h;
       $('#cpNext').onclick=()=>{
         $('#vCP').innerHTML='';waiting=false;
-        if(vid){player.playVideo()}
+        if(vid&&!fb){player.playVideo()}
         else{if(t>=total)finish();else resume()}
       };
     });
@@ -3842,7 +3844,7 @@ function videoB(id){
     if(right===k.cp.length)confetti(50);
     $('#vAgain').onclick=()=>{
       t=0;doneCP.clear();right=0;finished=false;$('#vEnd').innerHTML='';
-      if(vid){player.seekTo(0);player.playVideo()}else{draw();setBtn()}
+      if(vid&&!fb){player.seekTo(0);player.playVideo()}else{draw();setBtn()}
     };
   }
 
@@ -3855,22 +3857,55 @@ function videoB(id){
       const ix=k.cp.findIndex((c,n)=>!doneCP.has(n)&&t>=c.at*total);
       if(ix>-1){waiting=true;player.pauseVideo();showCP(ix)}
     };
-    loadYT().then(()=>{
+    let ready=false;
+    loadYT().then(ok=>{
+      if(!ok){useFallback('Pemutar YouTube diblokir di jaringanmu, jadi video ditampilkan dengan mode biasa.',true);return}
       player=new YT.Player('ytPlayer',{
         videoId:vid,
-        host:'https://www.youtube-nocookie.com',
-        playerVars:{rel:0,playsinline:1,modestbranding:1},
+        playerVars:{rel:0,playsinline:1,modestbranding:1,origin:location.origin},
         events:{
+          onReady:()=>{if(fb)return;ready=true;const m=$('#ytMsg');if(m)m.style.display='none'},
           onStateChange:e=>{
+            if(fb)return;
             if(e.data===YT.PlayerState.PLAYING){clearInterval(tm);tm=setInterval(poll,500)}
             else if(e.data===YT.PlayerState.ENDED){clearInterval(tm);if(!waiting)finish()}
             else clearInterval(tm);
           },
-          onError:()=>toast('Video tidak bisa diputar. Cek ID atau koneksi internet.','warn')
+          onError:e=>{
+            const c=e&&e.data;
+            useFallback((c===101||c===150||c===153)?'Pemilik video tidak mengizinkan diputar di dalam aplikasi.':'Video tidak bisa diputar di sini (kode '+c+').',false);
+          }
         }
       });
+      setTimeout(()=>{if(!ready)useFallback('Pemutar tidak merespons, jadi video ditampilkan dengan mode biasa.',true)},10000);
     });
     return;
+  }
+
+  /* ===== MODE CADANGAN: pemutar YouTube gagal -> iframe biasa + kuis jeda lewat tombol ===== */
+  function useFallback(msg,showFrame){
+    if(fb||finished)return;
+    fb=true;clearInterval(tm);
+    if(player&&player.destroy){try{player.destroy()}catch(e){}}
+    player=null;total=SIMT;t=0;
+    const wrap=$('.yt-wrap'),yurl='https://www.youtube.com/watch?v='+vid;
+    if(wrap){
+      wrap.innerHTML=showFrame
+        ?`<iframe src="https://www.youtube-nocookie.com/embed/${vid}?rel=0&playsinline=1&modestbranding=1" title="Video pembelajaran" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin" style="position:absolute;inset:0;width:100%;height:100%;border:0"></iframe>`
+        :`<div style="display:flex;flex-direction:column;align-items:center;gap:10px;color:#fff;font-size:13px;text-align:center;padding:16px"><span>${msg}</span><a href="${yurl}" target="_blank" rel="noopener" style="background:#fff;color:#0B2A6F;padding:8px 14px;border-radius:999px;text-decoration:none;font-weight:600">Buka di YouTube</a></div>`;
+    }
+    const ctl=$('.vctl');
+    if(ctl&&!$('#vPlay')){
+      ctl.insertAdjacentHTML('afterbegin',`<button class="btn btn-o" id="vPlay"></button>`);
+      ctl.insertAdjacentHTML('afterend',`<p class="small muted mb-2">${msg} ${showFrame?'Kalau video tidak tampil, ':''}<a href="${yurl}" target="_blank" rel="noopener">buka di YouTube</a>. Setelah menonton, tekan tombol di atas untuk memulai kuis jeda.</p>`);
+    }
+    play=$('#vPlay');play.onclick=onPlayClick;
+    draw();setBtn();
+  }
+  function onPlayClick(){
+    if(waiting)return;
+    if(t>=total){t=0;doneCP.clear();right=0;finished=false;$('#vEnd').innerHTML=''}
+    if(playing){playing=false;clearInterval(tm);setBtn()}else resume();
   }
 
   /* ===== MODE 2: belum ada ID video, pakai simulasi seperti sebelumnya ===== */
@@ -3883,11 +3918,7 @@ function videoB(id){
     if(t>=total){t=total;draw();playing=false;clearInterval(tm);setBtn();finish();return}
     draw();
   }
-  play.onclick=()=>{
-    if(waiting)return;
-    if(t>=total){t=0;doneCP.clear();right=0;finished=false;$('#vEnd').innerHTML=''}
-    if(playing){playing=false;clearInterval(tm);setBtn()}else resume();
-  };
+  play.onclick=onPlayClick;
   draw();setBtn();
 }
 
