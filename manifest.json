@@ -16,5 +16,28 @@
   { "src": "img/logotramvior192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
   { "src": "img/logotramvior512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
   { "src": "img/logotramvior512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+],
+"screenshots": [
+  {
+    "src": "img/tramviorberanda.png",
+    "sizes": "540x1200",
+    "type": "image/png",
+    "form_factor": "narrow",
+    "label": "Beranda Tramvior"
+  },
+  {
+    "src": "img/latihansoal.png",
+    "sizes": "540x1200",
+    "type": "image/png",
+    "form_factor": "narrow",
+    "label": "Latihan Soal"
+  },
+  {
+    "src": "img/aitutor.png",
+    "sizes": "540x1200",
+    "type": "image/png",
+    "form_factor": "narrow",
+    "label": "AI Tutor"
+  }
 ]
 }
