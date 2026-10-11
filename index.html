@@ -3773,14 +3773,12 @@ const ytId=v=>{
 };
 function loadYT(){
   return new Promise(res=>{
-    if(window.YT&&YT.Player)return res(true);
+    if(window.YT&&YT.Player)return res();
     const prev=window.onYouTubeIframeAPIReady;
-    window.onYouTubeIframeAPIReady=()=>{prev&&prev();res(true)};
+    window.onYouTubeIframeAPIReady=()=>{prev&&prev();res()};
     if(!document.getElementById('ytapi')){
-      const s=document.createElement('script');s.id='ytapi';s.src='https://www.youtube.com/iframe_api';
-      s.onerror=()=>res(false);document.head.appendChild(s);
+      const s=document.createElement('script');s.id='ytapi';s.src='https://www.youtube.com/iframe_api';document.head.appendChild(s);
     }
-    setTimeout(()=>res(!!(window.YT&&YT.Player)),8000);
   });
 }
 function videoH(id){
@@ -3788,7 +3786,7 @@ function videoH(id){
   const vid=ytId(k.yt);
   const q=encodeURIComponent(k.ytQuery);
   const ytBlock=vid
-    ?`<div class="yt-wrap"><div id="ytPlayer"></div><div id="ytMsg" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:#fff;font-size:13px;text-align:center;padding:16px;pointer-events:none">Memuat video…</div></div>`
+    ?`<div class="yt-wrap"><div id="ytPlayer"></div></div>`
     :`<div class="yt-wrap" style="background:${j.c}"><a href="https://www.youtube.com/results?search_query=${q}" target="_blank" rel="noopener" style="color:#fff;text-align:center;padding:20px;text-decoration:none">${ic('video','lg')}<br><b>Cari video di YouTube</b><br><small style="opacity:.85">${esc(k.ytQuery)}</small></a></div>`;
   return `${sub(k.judul,'belajar')}<div class="px">
    <div class="vstage" style="--jc:${j.c}">
@@ -3857,28 +3855,20 @@ function videoB(id){
       const ix=k.cp.findIndex((c,n)=>!doneCP.has(n)&&t>=c.at*total);
       if(ix>-1){waiting=true;player.pauseVideo();showCP(ix)}
     };
-    const ytFail=m=>{
-      const box=$('#ytMsg');if(!box)return;
-      box.style.pointerEvents='auto';
-      box.innerHTML=`<span>${m}</span><a href="https://www.youtube.com/watch?v=${vid}" target="_blank" rel="noopener" style="background:#fff;color:#0B2A6F;padding:8px 14px;border-radius:999px;text-decoration:none;font-weight:600">Buka di YouTube</a>`;
-    };
-    let ready=false;
-    loadYT().then(ok=>{
-      if(!ok){ytFail('Pemutar YouTube tidak bisa dimuat (cek koneksi atau pemblokir iklan).');return}
+    loadYT().then(()=>{
       player=new YT.Player('ytPlayer',{
         videoId:vid,
-        playerVars:{rel:0,playsinline:1,modestbranding:1,origin:location.origin},
+        host:'https://www.youtube-nocookie.com',
+        playerVars:{rel:0,playsinline:1,modestbranding:1},
         events:{
-          onReady:()=>{ready=true;const m=$('#ytMsg');if(m)m.style.display='none'},
           onStateChange:e=>{
             if(e.data===YT.PlayerState.PLAYING){clearInterval(tm);tm=setInterval(poll,500)}
             else if(e.data===YT.PlayerState.ENDED){clearInterval(tm);if(!waiting)finish()}
             else clearInterval(tm);
           },
-          onError:e=>ytFail('Video tidak bisa diputar di sini (kode '+(e&&e.data)+').')
+          onError:()=>toast('Video tidak bisa diputar. Cek ID atau koneksi internet.','warn')
         }
       });
-      setTimeout(()=>{if(!ready)ytFail('Pemutar tidak merespons (tidak siap setelah 10 detik).')},10000);
     });
     return;
   }
