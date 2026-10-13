@@ -14,8 +14,10 @@ Buat pengguna admin melalui **Authentication → Users** dan pastikan emailnya s
 
 ```sql
 update auth.users
-set raw_app_meta_data = coalesce(raw_app_meta_data, '{}'::jsonb) || '{"role":"admin"}'::jsonb
-where email = 'miftahuljannah8852@gmail.com';
+set raw_app_meta_data =
+  coalesce(raw_app_meta_data, '{}'::jsonb) || '{"role":"admin"}'::jsonb
+where lower(email) = lower('miftahuljannah8852@gmail.com')
+returning email, raw_app_meta_data ->> 'role' as role;
 ```
 
 Keluar lalu masuk kembali di halaman admin agar token sesi memuat role baru. Jangan menambahkan role admin ke metadata yang dapat diubah pengguna sendiri.
