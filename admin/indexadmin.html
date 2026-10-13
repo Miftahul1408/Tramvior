@@ -44,6 +44,8 @@ table{font-size:13px}
 <div id="app"></div>
 <div id="modalRoot"></div>
 <div id="toasts" style="position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:999;display:grid;gap:8px"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../supabase-client.js"></script>
 <script>
 'use strict';
 const $=(s,r=document)=>r.querySelector(s);
@@ -58,57 +60,72 @@ function toast(msg,type='info'){
   if(type==='bad')t.style.background='#E5484D';if(type==='ok')t.style.background='#12B76A';
   t.textContent=msg;$('#toasts').appendChild(t);setTimeout(()=>t.remove(),2800);
 }
-async function hashPw(pw,salt){
-  const s=salt+':'+pw;
-  if(window.crypto&&crypto.subtle){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}
-  let h=5381;for(const c of s)h=((h<<5)+h+c.charCodeAt(0))>>>0;return 'f'+h.toString(16);
-}
-
 /* =====================================================
-   AKSES DATA — membaca localStorage yang SAMA dengan
-   aplikasi siswa Tramvior. Admin HARUS dibuka dari origin
-   (domain + port) yang sama dengan aplikasi siswa, karena
-   localStorage dipisah per origin oleh browser.
+   AKSES DATA — Supabase
    ===================================================== */
-const LS={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}},del(k){try{localStorage.removeItem(k)}catch(e){}}};
-const getUsers=()=>LS.get('tv_users',[]);
-const saveUsers=u=>LS.set('tv_users',u);
-const getState=id=>LS.get('tv_state_'+id,null);
-const stKey=id=>'tv_state_'+id;
-const ADMIN_KEY='tva_admins';
-function getAdmins(){return LS.get(ADMIN_KEY,[])}
-async function ensureSeedAdmin(){
-  if(getAdmins().length)return;
-  const salt=Math.random().toString(36).slice(2);
-  LS.set(ADMIN_KEY,[{email:'admin@tramvior.id',nama:'Admin Tramvior',salt,hash:await hashPw('admin123',salt)}]);
+const db=window.tramviorSupabase;
+let USERS=[],STATES={};
+const getUsers=()=>USERS;
+const getState=id=>STATES[id]||null;
+async function loadDashboardData(){
+  const [{data:profiles,error:profileError},{data:states,error:stateError}]=await Promise.all([
+    db.from('student_profiles').select('*').order('created_at',{ascending:false}),
+    db.from('student_state').select('student_id,data')
+  ]);
+  if(profileError)throw profileError;
+  if(stateError)throw stateError;
+  STATES=Object.fromEntries(states.map(row=>[row.student_id,row.data]));
+  USERS=await Promise.all(profiles.map(async row=>{
+    const card=row.kartu_path?await db.storage.from('student-docs').createSignedUrl(row.kartu_path,3600):{data:null,error:null};
+    if(card.error)throw card.error;
+    return {
+      id:row.id,email:row.email,nama:row.nama,jurusan:row.jurusan,kelas:row.kelas,
+      sekolah:row.sekolah,kartuJurusan:card.data?.signedUrl||'',
+      kartuVerified:row.kartu_verified,kartuTanggal:row.kartu_tanggal,
+      createdAt:new Date(row.created_at).getTime()
+    };
+  }));
+}
+async function deleteStudentDocuments(studentId){
+  const bucket=db.storage.from('student-docs');
+  const {data,error}=await bucket.list(studentId,{limit:100});
+  if(error)throw error;
+  const paths=(data||[]).map(file=>`${studentId}/${file.name}`);
+  if(paths.length){
+    const {error:removeError}=await bucket.remove(paths);
+    if(removeError)throw removeError;
+  }
 }
 
 /* =====================================================
    AUTH ADMIN (terpisah dari akun siswa)
    ===================================================== */
 let ADM=null;
-function getSession(){try{return JSON.parse(sessionStorage.getItem('tva_session'))?.email||null}catch(e){return null}}
-function setSession(email){sessionStorage.setItem('tva_session',JSON.stringify({email}))}
-function clearSession(){sessionStorage.removeItem('tva_session')}
 
 function renderLogin(){
   $('#app').innerHTML=`<div class="auth-box">
    <div class="brand mb-3"><div class="logo">T</div>Tramvior <span class="muted" style="font-weight:500">Admin</span></div>
-   <div class="banner-note">Panel ini membaca data langsung dari browser yang sama dengan aplikasi siswa. Pastikan dibuka dari server/origin yang sama (periksa domain dan port di address bar harus identik dengan aplikasi siswa).</div>
+   <div class="banner-note">Masuk menggunakan akun admin Supabase. Akun harus memiliki role admin yang disetel di Supabase Auth.</div>
    <form id="fLogin">
-    <div class="mb-3"><label class="form-label">Email admin</label><input id="aEmail" type="email" class="form-control" value="admin@tramvior.id"></div>
-    <div class="mb-3"><label class="form-label">Kata sandi</label><input id="aPass" type="password" class="form-control" value="admin123"></div>
+    <div class="mb-3"><label class="form-label">Email admin</label><input id="aEmail" type="email" class="form-control"></div>
+    <div class="mb-3"><label class="form-label">Kata sandi</label><input id="aPass" type="password" class="form-control"></div>
     <div class="text-danger small mb-2" id="aErr"></div>
     <button class="btn btn-primary w-100" type="submit">Masuk sebagai Admin</button>
    </form>
-   <p class="small muted mt-3 mb-0">Akun demo: <b>admin@tramvior.id</b> / <b>admin123</b>. Ganti kata sandi ini sebelum dipakai sungguhan.</p>
   </div>`;
   $('#fLogin').onsubmit=async e=>{
     e.preventDefault();
     const email=$('#aEmail').value.trim().toLowerCase(),pw=$('#aPass').value;
-    const a=getAdmins().find(x=>x.email===email);
-    if(!a||await hashPw(pw,a.salt)!==a.hash){$('#aErr').textContent='Email atau kata sandi admin salah.';return}
-    ADM=a;setSession(a.email);renderDashboard();
+    const {data,error}=await db.auth.signInWithPassword({email,password:pw});
+    if(error){$('#aErr').textContent='Gagal masuk: '+error.message;return}
+    if(data.user.app_metadata?.role!=='admin'){
+      await db.auth.signOut();
+      $('#aErr').textContent='Akun ini belum memiliki role admin. Minta pemilik proyek mengaturnya di Supabase.';
+      return;
+    }
+    ADM={id:data.user.id,email:data.user.email,nama:data.user.user_metadata?.nama||data.user.email};
+    try{await loadDashboardData();renderDashboard()}
+    catch(loadError){console.error('Gagal memuat data admin:',loadError);$('#aErr').textContent='Gagal memuat data server: '+loadError.message}
   };
 }
 
@@ -142,7 +159,7 @@ function renderDashboard(){
      <button class="btn btn-outline-danger btn-sm" id="btnLogout">Keluar</button>
     </div></div>
    <div class="container-fluid p-3 p-md-4">
-    <div class="banner-note">Data di bawah dibaca langsung dari localStorage browser ini (akun siswa yang pernah login di perangkat/browser yang sama). Ini bukan database server — kalau siswa pakai perangkat lain, datanya tidak akan muncul di sini.</div>
+    <div class="banner-note">Data siswa dan progres dimuat langsung dari database Supabase.</div>
     <div class="row g-2 mb-3">
      <div class="col-6 col-md-3"><div class="stat-box"><b id="stTotal">0</b><small>Total akun</small></div></div>
      <div class="col-6 col-md-3"><div class="stat-box"><b id="stPremium">0</b><small>Premium aktif</small></div></div>
@@ -168,7 +185,7 @@ function renderDashboard(){
       <tbody id="tblBody"></tbody>
      </table>
     </div>
-    <p class="small muted mt-2" id="emptyNote" hidden>Belum ada akun siswa yang terdaftar di browser ini.</p>
+    <p class="small muted mt-2" id="emptyNote" hidden>Belum ada akun siswa yang terdaftar di database.</p>
     </div>
     <div id="viewJawab" hidden>
      <div class="card-t p-3 mb-3">
@@ -191,10 +208,13 @@ function renderDashboard(){
      <div class="text-center mt-3" id="aMoreWrap" hidden><button class="btn btn-outline-secondary btn-sm" id="aMore">Tampilkan lebih banyak</button></div>
     </div>
    </div>`;
-  $('#btnLogout').onclick=()=>{clearSession();ADM=null;renderLogin()};
+  $('#btnLogout').onclick=async()=>{await db.auth.signOut();ADM=null;USERS=[];STATES={};renderLogin()};
   $('#btnTheme').onclick=()=>{const d=document.documentElement;d.setAttribute('data-bs-theme',d.getAttribute('data-bs-theme')==='dark'?'light':'dark')};
   $('#btnExportAll').onclick=exportAllCSV;
-  $('#btnRefresh').onclick=()=>{paintTable();fillAnswerFilters();paintAnswers();toast('Data dimuat ulang','ok')};
+  $('#btnRefresh').onclick=async()=>{
+    try{await loadDashboardData();paintTable();fillAnswerFilters();paintAnswers();toast('Data dimuat ulang','ok')}
+    catch(error){console.error('Gagal memuat ulang data admin:',error);toast('Gagal memuat data: '+error.message,'bad')}
+  };
   $$('.tab-b').forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
   $('#aQ').oninput=e=>{AFILTER.q=e.target.value.toLowerCase();ALIMIT=ALIMIT_STEP;paintAnswers()};
   $('#aSiswa').onchange=e=>{AFILTER.siswa=e.target.value;ALIMIT=ALIMIT_STEP;paintAnswers()};
@@ -398,20 +418,30 @@ function openDetail(id){
    <button class="btn btn-sm btn-outline-danger" id="btnDelete">Hapus akun siswa ini</button>
   </div>`);
   $('#mClose',m).onclick=closeModal;
-  $('#btnVerify',m).onclick=()=>{
-    u.kartuVerified=!u.kartuVerified;saveUsers(users.map(x=>x.id===u.id?u:x));
-    toast(u.kartuVerified?'Kartu diverifikasi':'Verifikasi dibatalkan','ok');closeModal();paintTable();
+  $('#btnVerify',m).onclick=async()=>{
+    const verified=!u.kartuVerified;
+    const {error}=await db.rpc('admin_set_card_verification',{p_student_id:u.id,p_verified:verified});
+    if(error){console.error('Gagal mengubah verifikasi kartu:',error);toast('Verifikasi gagal: '+error.message,'bad');return}
+    u.kartuVerified=verified;toast(verified?'Kartu diverifikasi':'Verifikasi dibatalkan','ok');closeModal();paintTable();
   };
   const br=$('#btnRevoke',m);if(br)br.onclick=()=>confirmBox('Cabut Premium',`Masa Premium ${esc(u.nama)} akan diakhiri sekarang juga.`,'Cabut Premium',()=>{
-    s.premium.until=0;LS.set(stKey(u.id),s);toast('Premium dicabut','ok');paintTable();
+    s.premium.until=0;
+    db.from('student_state').upsert({student_id:u.id,data:s},{onConflict:'student_id'}).then(({error})=>{
+      if(error){console.error('Gagal mencabut Premium:',error);toast('Premium gagal dicabut: '+error.message,'bad');return}
+      STATES[u.id]=s;toast('Premium dicabut','ok');paintTable();
+    });
   });
   $('#btnExportLog',m).onclick=()=>{
     const head=['Waktu','Mode','Jurusan','Kompetensi','Soal','JawabanDipilih','JawabanBenar','Status'];
     const rows=log.map(l=>[new Date(l.ts).toLocaleString('id-ID'),l.mode,l.jur,l.kid,l.q,l.chosen,l.correctText,l.benar?'Benar':'Salah']);
     downloadCSV(`jawaban-${u.nama.replace(/\s+/g,'-')}.csv`,[head,...rows]);
   };
-  $('#btnDelete',m).onclick=()=>confirmBox('Hapus Akun Siswa',`Akun ${esc(u.nama)} beserta seluruh progres belajarnya akan dihapus permanen dari browser ini. Tindakan ini tidak bisa dibatalkan.`,'Hapus permanen',()=>{
-    saveUsers(users.filter(x=>x.id!==u.id));LS.del(stKey(u.id));
+  $('#btnDelete',m).onclick=()=>confirmBox('Hapus Akun Siswa',`Akun ${esc(u.nama)} beserta seluruh progres belajarnya akan dihapus permanen dari server. Tindakan ini tidak bisa dibatalkan.`,'Hapus permanen',async()=>{
+    const {error}=await db.rpc('admin_delete_student',{p_student_id:u.id});
+    if(error){console.error('Gagal menghapus akun siswa:',error);toast('Akun gagal dihapus: '+error.message,'bad');return}
+    USERS=USERS.filter(x=>x.id!==u.id);delete STATES[u.id];
+    try{await deleteStudentDocuments(u.id)}
+    catch(error){console.error('Akun terhapus tetapi foto siswa belum berhasil dihapus:',error);toast('Akun terhapus, tetapi penghapusan foto gagal: '+error.message,'bad');paintTable();return}
     toast('Akun siswa dihapus','ok');paintTable();
   });
 }
@@ -419,11 +449,14 @@ function openDetail(id){
 /* =====================================================
    BOOT
    ===================================================== */
-window.addEventListener('storage',e=>{if(e.key&&(e.key==='tv_users'||e.key.startsWith('tv_state_'))&&document.getElementById('tblBody')){paintTable();fillAnswerFilters();paintAnswers()}});
 (async function boot(){
-  await ensureSeedAdmin();
-  const email=getSession();
-  if(email){const a=getAdmins().find(x=>x.email===email);if(a){ADM=a;renderDashboard();return}}
+  const {data,error}=await db.auth.getSession();
+  if(error){console.error('Gagal memeriksa sesi admin:',error);toast('Gagal memeriksa sesi: '+error.message,'bad');renderLogin();return}
+  if(data.session&&data.session.user.app_metadata?.role==='admin'){
+    ADM={id:data.session.user.id,email:data.session.user.email,nama:data.session.user.user_metadata?.nama||data.session.user.email};
+    try{await loadDashboardData();renderDashboard();return}
+    catch(loadError){console.error('Gagal memuat dashboard:',loadError);toast('Gagal memuat dashboard: '+loadError.message,'bad')}
+  }
   renderLogin();
 })();
 </script>

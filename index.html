@@ -418,6 +418,8 @@ small,.small{font-size:12px}
 <div id="toasts" aria-live="polite"></div>
 <canvas id="confetti" aria-hidden="true"></canvas>
 <div id="modalRoot"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-client.js"></script>
 <script>
 'use strict';
 /* =====================================================
@@ -3230,7 +3232,7 @@ const BADGES=[
 const ONB=[
  {img:'img/on1.png',t:'Belajar sesuai jurusanmu',d:'Materi, video, dan soal latihan disesuaikan untuk Akuntansi, Otomotif, Perhotelan, atau Tata Boga.'},
  {img:'img/on2.png',t:'Belajar dapat kuota',d:'Kumpulkan poin dari kuis dan misi harian, lalu tukar jadi paket data internet.'},
- {img:'img/on3.png',t:'Siap kerja, walau sinyal susah',d:'Sebagian besar fitur jalan tanpa internet. Latihan wawancara dan Skill Passport membantu kamu melamar kerja.'}
+ {img:'img/on3.png',t:'Siap kerja, walau sinyal susah',d:'Materi yang sudah dimuat dapat dibuka offline. Login, progres belajar, dan sinkronisasi perlu koneksi internet.'}
 ];
 
 /* =====================================================
@@ -3318,17 +3320,141 @@ function confirmBox(title,msg,okLabel,cb,danger=true){
    STATE
    ===================================================== */
 let U=null,S=null,CLEAN=()=>{},SWREADY=false,deferredPrompt=null;
-const users=()=>LS.get('tv_users',[]);
-const saveUsers=u=>LS.set('tv_users',u);
+let USER_CACHE=[];
+let stateSaveTimer=null,stateSaveChain=Promise.resolve(),stateSaveErrorShown=false;
+let queuedStateSave=null;
+const db=window.tramviorSupabase;
+const users=()=>USER_CACHE;
+function saveUsers(list){
+  USER_CACHE=list;
+  const user=list.find(x=>x.id===U?.id);
+  if(!user)return Promise.resolve();
+  return db.from('student_profiles').update({
+    nama:user.nama,jurusan:user.jurusan,kelas:user.kelas,sekolah:user.sekolah,
+    avatar_path:user.avatarPath||null,kartu_path:user.kartuPath||null
+  }).eq('id',user.id).then(({error})=>{
+    if(error)throw error;
+  }).catch(error=>{
+    console.error('Gagal menyimpan profil ke Supabase:',error);
+    toast('Profil gagal disimpan ke server. Periksa koneksi lalu coba lagi.','warn');
+    throw error;
+  });
+}
 const stKey=id=>'tv_state_'+id;
 const newDaily=()=>({ai:0,videos:[],soal:0,freeEarned:0,q:{},qd:{}});
 const newState=()=>({points:0,lifetime:0,weekPoints:0,weekKey:weekKey(),streak:0,lastActive:'',day:dstr(),daily:newDaily(),done:{video:{},latihan:{}},mastered:{},passports:{},badges:{},premium:{on:false},redeem:[],simDone:0,correct:0,examBest:0,pending:0,lastSync:Date.now(),chat:[],answerLog:[]});
+function profileFromRow(row,cardUrl=null,avatarUrl=null){
+  return {
+    id:row.id,email:row.email,nama:row.nama,jurusan:row.jurusan,kelas:row.kelas,
+    sekolah:row.sekolah,avatar:avatarUrl||'',avatarPath:row.avatar_path||'',
+    kartuJurusan:cardUrl||'',kartuPath:row.kartu_path||'',
+    kartuVerified:row.kartu_verified,kartuTanggal:row.kartu_tanggal,
+    createdAt:new Date(row.created_at).getTime()
+  };
+}
+async function signedDocument(path){
+  if(!path)return '';
+  const {data,error}=await db.storage.from('student-docs').createSignedUrl(path,3600);
+  if(error)throw error;
+  return data.signedUrl;
+}
+async function loadCloudUser(authUser){
+  const {data:row,error:profileError}=await db.from('student_profiles').select('*').eq('id',authUser.id).single();
+  if(profileError)throw profileError;
+  const {data:stateRow,error:stateError}=await db.from('student_state').select('data').eq('student_id',authUser.id).maybeSingle();
+  if(stateError)throw stateError;
+  const [cardUrl,avatarUrl]=await Promise.all([signedDocument(row.kartu_path),signedDocument(row.avatar_path)]);
+  const user=profileFromRow(row,cardUrl,avatarUrl);
+  USER_CACHE=[user];
+  S=stateRow?.data||newState();
+  S.premium=S.premium||{on:false};S.chat=S.chat||[];S.answerLog=S.answerLog||[];
+  return user;
+}
+async function uploadStudentImage(file,kind,userId=U?.id){
+  if(!file||!userId)throw new Error('Sesi pengguna tidak tersedia untuk mengunggah foto.');
+  if(!['image/jpeg','image/png','image/webp'].includes(file.type))throw new Error('Format foto harus JPG, PNG, atau WebP.');
+  if(file.size>5*1024*1024)throw new Error('Ukuran foto maksimal 5 MB.');
+  const ext=file.type==='image/png'?'png':file.type==='image/webp'?'webp':'jpg';
+  const path=`${userId}/${kind}.${ext}`;
+  const {error:uploadError}=await db.storage.from('student-docs').upload(path,file,{upsert:true,contentType:file.type});
+  if(uploadError)throw uploadError;
+  return path;
+}
+async function deleteStudentDocuments(userId){
+  const bucket=db.storage.from('student-docs');
+  const {data,error}=await bucket.list(userId,{limit:100});
+  if(error)throw error;
+  const paths=(data||[]).map(file=>`${userId}/${file.name}`);
+  if(paths.length){
+    const {error:removeError}=await bucket.remove(paths);
+    if(removeError)throw removeError;
+  }
+}
+async function base64ImageFile(dataUrl,name='legacy-card.jpg'){
+  const response=await fetch(dataUrl);
+  const blob=await response.blob();
+  return new File([blob],name,{type:blob.type||'image/jpeg'});
+}
+async function importLegacyData(user){
+  const legacy=LS.get('tv_users',[]).find(item=>item.email===user.email);
+  if(!legacy)return;
+  const legacyState=LS.get(stKey(legacy.id),null);
+  if(legacyState){
+    const {error}=await db.from('student_state').upsert({student_id:user.id,data:legacyState},{onConflict:'student_id'});
+    if(error)throw error;
+    S=legacyState;
+  }
+  if(legacy.kartuJurusan&&!user.kartuPath){
+    const file=await base64ImageFile(legacy.kartuJurusan);
+    const path=await uploadStudentImage(file,'kartu',user.id);
+    const {error}=await db.from('student_profiles').update({kartu_path:path}).eq('id',user.id);
+    if(error)throw error;
+    user.kartuPath=path;user.kartuJurusan=await signedDocument(path);
+    user.kartuVerified=false;user.kartuTanggal=null;
+  }
+  if(legacy.avatar&&!user.avatarPath){
+    const file=await base64ImageFile(legacy.avatar,'legacy-avatar.jpg');
+    const path=await uploadStudentImage(file,'avatar',user.id);
+    const {error}=await db.from('student_profiles').update({avatar_path:path}).eq('id',user.id);
+    if(error)throw error;
+    user.avatarPath=path;user.avatar=await signedDocument(path);
+  }
+  const remaining=LS.get('tv_users',[]).filter(item=>item.id!==legacy.id);
+  if(remaining.length)LS.set('tv_users',remaining);else LS.del('tv_users');
+  LS.del(stKey(legacy.id));
+  const oldSession=LS.get('tv_session',null);
+  if(oldSession?.id===legacy.id)LS.del('tv_session');
+  USER_CACHE=[user];
+}
 function logAnswer(mode,kid,qtext,chosen,correctText,benar){
   S.answerLog=S.answerLog||[];
   S.answerLog.push({ts:Date.now(),mode,kid:kid||'',jur:U.jurusan,q:qtext,chosen,correctText,benar});
   if(S.answerLog.length>300)S.answerLog=S.answerLog.slice(-300);
 }
-function save(){if(U&&S)LS.set(stKey(U.id),S)}
+function save(){
+  if(!U||!S)return;
+  clearTimeout(stateSaveTimer);
+  queuedStateSave={studentId:U.id,data:JSON.parse(JSON.stringify(S))};
+  stateSaveTimer=setTimeout(persistQueuedState,350);
+}
+function persistQueuedState(){
+  clearTimeout(stateSaveTimer);stateSaveTimer=null;
+  const queued=queuedStateSave;queuedStateSave=null;
+  if(!queued)return stateSaveChain;
+  stateSaveChain=stateSaveChain.then(async()=>{
+    const {error}=await db.from('student_state').upsert({student_id:queued.studentId,data:queued.data},{onConflict:'student_id'});
+    if(error)throw error;
+    stateSaveErrorShown=false;
+  }).catch(error=>{
+    console.error('Gagal menyimpan progres ke Supabase:',error);
+    if(!stateSaveErrorShown){toast('Progres gagal disimpan ke server. Periksa koneksi.','warn');stateSaveErrorShown=true}
+  });
+  return stateSaveChain;
+}
+async function flushStateSave(){
+  persistQueuedState();
+  await stateSaveChain;
+}
 const premium=()=>!!S&&!!S.premium.on;
 function rollover(){
   const t=dstr();
@@ -3451,35 +3577,12 @@ async function hashPw(pw,salt){
 function fileToBase64(file){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(file)})}
 const EMAIL_RE=/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
-function setSession(id,remember){clearSession();try{(remember?localStorage:sessionStorage).setItem('tv_session',JSON.stringify({id}))}catch(e){}}
-function getSession(){for(const st of [localStorage,sessionStorage]){try{const v=st.getItem('tv_session');if(v)return JSON.parse(v).id}catch(e){}}return null}
-function clearSession(){try{localStorage.removeItem('tv_session');sessionStorage.removeItem('tv_session')}catch(e){}}
+function clearSession(){return db.auth.signOut()}
 function showSec(n){['splash','onboard','auth','shell'].forEach(id=>{$('#'+id).hidden=id!==n});window.scrollTo(0,0)}
 function fErr(id,msg){const i=$('#'+id),e=$(`.err[data-for="${id}"]`);if(i)i.classList.toggle('is-invalid',!!msg);if(e)e.textContent=msg||''}
 function clearErrs(root){$$('.err',root).forEach(e=>e.textContent='');$$('.is-invalid',root).forEach(e=>e.classList.remove('is-invalid'))}
 const pwField=(id,label,ph)=>`<div class="mb-3"><label class="form-label" for="${id}">${label}</label><div class="pw"><input id="${id}" type="password" class="form-control" autocomplete="${id==='lPass'?'current-password':'new-password'}" placeholder="${ph}"><button type="button" class="pw-toggle" data-t="${id}" aria-label="Tampilkan kata sandi">${ic('eye')}</button></div><div class="err" data-for="${id}"></div></div>`;
 function bindPwToggles(root){$$('.pw-toggle',root).forEach(b=>b.onclick=()=>{const i=$('#'+b.dataset.t);const show=i.type==='password';i.type=show?'text':'password';b.innerHTML=ic(show?'eyeoff':'eye');b.setAttribute('aria-label',show?'Sembunyikan kata sandi':'Tampilkan kata sandi')})}
-
-/* ---------- 4 akun dummy (1 per jurusan), terverifikasi, siap pakai ---------- */
-const DUMMY_DEF=[
- {jur:'Akuntansi',nama:'Siswa Demo Akuntansi',sekolah:'SMKN 1 Sukoharjo'},
- {jur:'Otomotif',nama:'Siswa Demo Otomotif',sekolah:'SMK Muhammadiyah 1 Klaten'},
- {jur:'Perhotelan',nama:'Siswa Demo Perhotelan',sekolah:'SMKN 2 Surakarta'},
- {jur:'Tata Boga',nama:'Siswa Demo Tata Boga',sekolah:'SMKN 1 Karanganyar'}
-];
-async function seedDummyUsers(){
-  const existing=users();
-  const have=new Set(existing.map(u=>u.email));
-  let changed=false;
-  for(const d of DUMMY_DEF){
-    const email='demo.'+d.jur.toLowerCase().replace(/\s+/g,'')+'@tramvior.id';
-    if(have.has(email))continue;
-    const salt=Math.random().toString(36).slice(2);
-    existing.push({id:'u_demo_'+d.jur.toLowerCase().replace(/\s+/g,''),nama:d.nama,email,salt,hash:await hashPw('demo123',salt),jurusan:d.jur,kelas:'XI',sekolah:d.sekolah,avatar:'',kartuJurusan:'',kartuVerified:true,kartuTanggal:Date.now(),createdAt:Date.now()});
-    changed=true;
-  }
-  if(changed)saveUsers(existing);
-}
 
 function showAuth(mode='login'){
   showSec('auth');
@@ -3492,12 +3595,11 @@ function showAuth(mode='login'){
     <div class="mb-3"><label class="form-label" for="lEmail">Email</label><input id="lEmail" type="email" class="form-control" autocomplete="email" placeholder="nama@email.com"><div class="err" data-for="lEmail"></div></div>
     ${pwField('lPass','Kata sandi','Masukkan kata sandi')}
     <div class="d-flex justify-content-between align-items-center mb-3">
-      <div class="form-check m-0"><input class="form-check-input" type="checkbox" id="lRem" checked><label class="form-check-label" for="lRem">Tetap masuk</label></div>
+      <div class="form-check m-0"><input class="form-check-input" type="checkbox" id="lRem" checked><label class="form-check-label" for="lRem">Tetap masuk di tab ini</label></div>
       <a href="#" id="lForgot">Lupa kata sandi?</a></div>
     <div class="err mb-2" id="lErr"></div>
     <button class="btn btn-t w-100" type="submit">Masuk</button>
-    <p class="small muted text-center mt-3 mb-2">Atau coba akun demo per jurusan (sandi: demo123)</p>
-    <div class="grid2" id="demoGrid">${DUMMY_DEF.map(d=>`<button type="button" class="sc" style="min-height:64px" data-demo="${d.jur}"><div class="ic-w">${ic(JUR[d.jur].ic)}</div><b>${esc(d.jur)}</b></button>`).join('')}</div>
+    <p class="small muted text-center mt-3">Masuk menggunakan akun terdaftar. Data akun dan progres disimpan di server.</p>
    </form>`:`
    <form id="fReg" novalidate>
     <div class="mb-3"><label class="form-label" for="rNama">Nama lengkap</label><input id="rNama" class="form-control" autocomplete="name" placeholder="Nama kamu"><div class="err" data-for="rNama"></div></div>
@@ -3517,27 +3619,40 @@ function showAuth(mode='login'){
      <img id="rKartuPrev" hidden style="max-width:100%;border-radius:12px;margin-top:8px;border:1px solid var(--line)">
      <div class="err" data-for="rKartu"></div></div>
     <button class="btn btn-t w-100" type="submit">Buat akun</button>
-    <p class="small muted mt-3">Data akunmu, termasuk foto kartu, disimpan di perangkat ini (localStorage), bukan dikirim ke server mana pun.</p>
+    <p class="small muted mt-3">Profil dan progres disimpan di server. Setelah konfirmasi email, masuk untuk menyelesaikan unggah foto kartu.</p>
+    <div class="err mt-2" id="rErr"></div>
    </form>`}
   </div>`;
   const root=$('#auth');bindPwToggles(root);
   $$('.seg button',root).forEach(b=>b.onclick=()=>showAuth(b.dataset.m));
   if(login){
-    $$('#demoGrid [data-demo]',root).forEach(b=>b.onclick=async()=>{
-      await seedDummyUsers();
-      const email='demo.'+b.dataset.demo.toLowerCase().replace(/\s+/g,'')+'@tramvior.id';
-      const u=users().find(x=>x.email===email);
-      if(u)startSession(u,true);
-    });
     $('#fLogin').onsubmit=async e=>{e.preventDefault();clearErrs(root);
       const email=$('#lEmail').value.trim().toLowerCase(),pw=$('#lPass').value;let bad=false;
       if(!EMAIL_RE.test(email)){fErr('lEmail','Masukkan email yang valid, contoh nama@email.com');bad=true}
       if(pw.length<6){fErr('lPass','Kata sandi minimal 6 karakter');bad=true}
       if(bad)return;
-      const u=users().find(x=>x.email===email);
-      if(!u){$('#lErr').textContent='Email belum terdaftar. Buat akun di tab Daftar, atau coba akun demo di bawah.';return}
-      if(await hashPw(pw,u.salt)!==u.hash){$('#lErr').textContent='Kata sandi salah. Coba lagi atau pilih Lupa kata sandi.';return}
-      startSession(u,$('#lRem').checked);
+      const {data,error}=await db.auth.signInWithPassword({email,password:pw});
+      if(error){
+        const legacy=LS.get('tv_users',[]).find(item=>item.email===email);
+        if(legacy&&await hashPw(pw,legacy.salt)===legacy.hash){
+          const {data:created,error:createError}=await db.auth.signUp({
+            email,password:pw,options:{data:{nama:legacy.nama,jurusan:legacy.jurusan,kelas:legacy.kelas,sekolah:legacy.sekolah}}
+          });
+          if(createError){$('#lErr').textContent='Akun lama ditemukan, tetapi migrasi login gagal: '+createError.message;return}
+          if(!created.session){
+            $('#lErr').textContent=created.user?.identities?.length===0
+              ?'Email ini sudah memiliki akun Supabase. Gunakan Lupa kata sandi untuk mengatur kata sandi baru; data lama di browser tetap aman.'
+              :'Akun lama siap dipindahkan. Konfirmasi email terlebih dahulu, lalu masuk kembali untuk memindahkan progres.';
+            return;
+          }
+          try{await startSession(created.user)}catch(migrationError){$('#lErr').textContent='Akun berhasil dibuat, tetapi pemindahan data belum selesai: '+migrationError.message}
+          return;
+        }
+        $('#lErr').textContent=error.message==='Invalid login credentials'?'Email atau kata sandi salah.':'Tidak dapat masuk: '+error.message;
+        return;
+      }
+      if(!data.session){$('#lErr').textContent='Konfirmasi email dari kotak masukmu, lalu masuk kembali.';return}
+      try{await startSession(data.user)}catch(loadError){$('#lErr').textContent='Gagal memuat data akun dari server: '+loadError.message}
     };
     $('#lForgot').onclick=e=>{e.preventDefault();forgotFlow()};
   }else{
@@ -3548,45 +3663,64 @@ function showAuth(mode='login'){
       const nama=$('#rNama').value.trim(),email=$('#rEmail').value.trim().toLowerCase(),pw=$('#rPass').value,sek=$('#rSek').value.trim();let bad=false;
       if(nama.length<2){fErr('rNama','Nama minimal 2 huruf');bad=true}
       if(!EMAIL_RE.test(email)){fErr('rEmail','Masukkan email yang valid, contoh nama@email.com');bad=true}
-      else if(users().some(x=>x.email===email)){fErr('rEmail','Email sudah terdaftar. Masuk lewat tab Masuk.');bad=true}
       if(pw.length<6){fErr('rPass','Kata sandi minimal 6 karakter');bad=true}
       if(sek.length<3){fErr('rSek','Isi nama sekolahmu');bad=true}
-      if(!rKartuFile){fErr('rKartu','Wajib unggah foto kartu pelajar atau kartu identitas jurusan');bad=true}
       if(bad)return;
-      const kartuB64=await fileToBase64(rKartuFile);
-      const salt=Math.random().toString(36).slice(2);
-      const u={id:'u_'+Date.now().toString(36)+rnd(10,99),nama,email,salt,hash:await hashPw(pw,salt),jurusan:$('#rJur').value,kelas:$('#rKelas').value,sekolah:sek,avatar:'',kartuJurusan:kartuB64,kartuVerified:true,kartuTanggal:Date.now(),createdAt:Date.now()};
-      saveUsers([...users(),u]);startSession(u,true);
+      const {data,error}=await db.auth.signUp({email,password:pw,options:{data:{
+        nama,jurusan:$('#rJur').value,kelas:$('#rKelas').value,sekolah:sek
+      }}});
+      if(error){$('#rErr').textContent='Pendaftaran gagal: '+error.message;return}
+      if(!data.session){$('#rErr').textContent='Akun dibuat. Konfirmasi email dari kotak masukmu, lalu masuk kembali untuk mengunggah foto kartu.';return}
+      let photoError=null;
+      if(rKartuFile){
+        try{
+          const path=await uploadStudentImage(rKartuFile,'kartu',data.user.id);
+          const {error:photoError}=await db.from('student_profiles').update({kartu_path:path}).eq('id',data.user.id);
+          if(photoError)throw photoError;
+        }catch(error){photoError=error;console.error('Akun dibuat tetapi unggahan kartu gagal:',error)}
+      }
+      try{await startSession(data.user)}
+      catch(loadError){$('#rErr').textContent='Akun dibuat, tetapi data akun gagal dimuat: '+loadError.message;return}
+      if(photoError)toast('Akun dibuat; foto kartu gagal diunggah. Unggah dari Edit Profil.','warn');
     };
   }
 }
 
 function forgotFlow(){
-  let code='',mail='';
-  const m=modal(`<div class="p-4" id="fg"></div>`);
-  const step1=()=>{$('#fg').innerHTML=`<h4 class="mb-1">Lupa kata sandi</h4><p class="muted small mb-3">Masukkan email akunmu. Karena prototipe ini tanpa server email, kode reset ditampilkan di layar.</p><div class="mb-3"><input id="fEmail" type="email" class="form-control" placeholder="nama@email.com"><div class="err" data-for="fEmail"></div></div><div class="d-flex gap-2"><button class="btn btn-ghost flex-fill" data-close>Batal</button><button class="btn btn-t flex-fill" id="fGo">Kirim kode</button></div>`;
-    $('#fGo').onclick=()=>{mail=$('#fEmail').value.trim().toLowerCase();fErr('fEmail','');
-      if(!EMAIL_RE.test(mail))return fErr('fEmail','Masukkan email yang valid');
-      if(!users().some(u=>u.email===mail))return fErr('fEmail','Email belum terdaftar');
-      code=String(rnd(100000,999999));step2()}};
-  const step2=()=>{$('#fg').innerHTML=`<h4 class="mb-1">Masukkan kode</h4><div class="banner"><span>Kode reset (simulasi): <b>${code}</b></span></div><div class="mb-3"><label class="form-label" for="fCode">Kode</label><input id="fCode" class="form-control" inputmode="numeric" maxlength="6"><div class="err" data-for="fCode"></div></div>${pwField('fPass','Kata sandi baru','Minimal 6 karakter')}<div class="d-flex gap-2"><button class="btn btn-ghost flex-fill" data-close>Batal</button><button class="btn btn-t flex-fill" id="fSave">Simpan</button></div>`;
-    bindPwToggles($('#fg'));
-    $('#fSave').onclick=async()=>{fErr('fCode','');fErr('fPass','');
-      if($('#fCode').value.trim()!==code)return fErr('fCode','Kode tidak cocok');
-      const pw=$('#fPass').value;if(pw.length<6)return fErr('fPass','Kata sandi minimal 6 karakter');
-      const all=users(),u=all.find(x=>x.email===mail);u.salt=Math.random().toString(36).slice(2);u.hash=await hashPw(pw,u.salt);saveUsers(all);
-      closeModal();toast('Kata sandi diperbarui. Silakan masuk.','ok')}};
-  step1();
+  const m=modal(`<div class="p-4"><h4 class="mb-1">Lupa kata sandi</h4><p class="muted small mb-3">Tautan untuk mengatur ulang kata sandi akan dikirim ke email akunmu.</p><input id="fEmail" type="email" class="form-control mb-2" placeholder="nama@email.com"><div class="err" id="fErr"></div><div class="d-flex gap-2"><button class="btn btn-ghost flex-fill" data-close>Batal</button><button class="btn btn-t flex-fill" id="fGo">Kirim tautan</button></div></div>`);
+  $('#fGo',m).onclick=async()=>{
+    const email=$('#fEmail',m).value.trim().toLowerCase();
+    if(!EMAIL_RE.test(email)){$('#fErr',m).textContent='Masukkan email yang valid.';return}
+    const {error}=await db.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname});
+    if(error){$('#fErr',m).textContent='Tautan gagal dikirim: '+error.message;return}
+    closeModal();toast('Tautan reset dikirim. Periksa emailmu.','ok');
+  };
 }
 
-function startSession(user,remember){
-  U=user;S=LS.get(stKey(user.id),null)||newState();
-  S.premium=S.premium||{on:false};S.chat=S.chat||[];
-  rollover();save();setSession(user.id,remember);
+function showPasswordRecovery(){
+  const m=modal(`<div class="p-4"><h4 class="mb-3">Buat kata sandi baru</h4><div class="mb-3"><label for="recoveryPass" class="form-label">Kata sandi baru</label><input id="recoveryPass" type="password" class="form-control" minlength="6"><div class="err" id="recoveryErr"></div></div><button id="recoverySave" class="btn btn-t w-100">Simpan kata sandi</button></div>`);
+  $('#recoverySave',m).onclick=async()=>{
+    const password=$('#recoveryPass',m).value;
+    if(password.length<6){$('#recoveryErr',m).textContent='Kata sandi minimal 6 karakter.';return}
+    const {error}=await db.auth.updateUser({password});
+    if(error){$('#recoveryErr',m).textContent='Gagal memperbarui kata sandi: '+error.message;return}
+    closeModal();toast('Kata sandi berhasil diperbarui.','ok');
+  };
+}
+
+async function startSession(authUser){
+  U=await loadCloudUser(authUser);
+  await importLegacyData(U);
+  rollover();save();
   showSec('shell');renderTop();renderTabs();
   if(location.hash==='#/beranda')render();else location.hash='#/beranda';
 }
-function logout(){clearSession();CLEAN();CLEAN=()=>{};U=null;S=null;location.hash='';showAuth('login')}
+async function logout(){
+  await flushStateSave();
+  const {error}=await db.auth.signOut();
+  if(error)console.error('Gagal mengakhiri sesi Supabase:',error);
+  CLEAN();CLEAN=()=>{};U=null;S=null;USER_CACHE=[];location.hash='';showAuth('login');
+}
 
 /* =====================================================
    SHELL: header, tab bar, status jaringan, router
@@ -3605,9 +3739,9 @@ let netTimer;
 function netBar(state){
   const b=$('#netBar');clearTimeout(netTimer);
   const d=$('#netDot');if(d){d.classList.toggle('off',!navigator.onLine);d.title=navigator.onLine?'Online':'Offline'}
-  if(state==='off'){b.className='netbar off';b.innerHTML=ic('wifioff','sm')+`<span>Kamu offline. Progres tersimpan di perangkat${S&&S.pending?` (${S.pending} menunggu sinkron)`:''}.</span>`;b.hidden=false}
-  else if(state==='sync'){b.className='netbar sync';b.innerHTML=ic('refresh','sm')+'<span>Kembali online. Menyinkronkan progres...</span>';b.hidden=false;
-    netTimer=setTimeout(()=>{if(S){S.pending=0;S.lastSync=Date.now();save()}b.hidden=true;toast('Progres tersinkron','ok')},1800)}
+  if(state==='off'){b.className='netbar off';b.innerHTML=ic('wifioff','sm')+'<span>Kamu offline. Perubahan belum dapat disimpan ke server.</span>';b.hidden=false}
+  else if(state==='sync'){b.className='netbar sync';b.innerHTML=ic('refresh','sm')+'<span>Kembali online. Simpan kembali perubahan jika tadi gagal.</span>';b.hidden=false;
+    netTimer=setTimeout(()=>{b.hidden=true},4000)}
   else b.hidden=true;
 }
 function bindNet(){
@@ -3706,7 +3840,7 @@ function homeH(){
     <a class="sc" href="#/kuota"><div class="ic-w">${ic('signal')}</div><b>Tukar Kuota</b><small>Poin jadi kuota data</small></a>
    </div>
    ${!premium()?`<div class="card-t mt-3 d-flex gap-3 align-items-center" data-up="Buka semua fitur belajar." role="button" tabindex="0"><div class="qic" style="background:var(--yellow);color:#3A2A00">${ic('crown')}</div><div><b>Premium ${rp(PRICE)}/bulan</b><p class="small muted">AI Tutor tanpa batas, pembahasan lengkap, poin 2 kali lipat.</p></div></div>`:''}
-   <p class="small muted mt-3 d-flex align-items-center gap-1">${ic(navigator.onLine?'refresh':'wifioff','sm')}${SWREADY?'Konten siap dipakai offline':'Buka lewat localhost atau HTTPS agar bisa offline'} · sinkron terakhir ${sync}</p>
+   <p class="small muted mt-3 d-flex align-items-center gap-1">${ic(navigator.onLine?'refresh':'wifioff','sm')}${SWREADY?'Konten dapat dibuka offline; simpan progres memerlukan internet':'Buka lewat localhost atau HTTPS agar konten dapat dibuka offline'} · aktivitas terakhir ${sync}</p>
   </section>`;
 }
 function homeB(){countUp($('#heroPts'),S.points,900)}
@@ -4232,8 +4366,13 @@ function profilB(){
   $('#btnReset').onclick=()=>confirmBox('Reset data belajar','Progres, poin, streak, dan lencana akan dihapus. Akun tetap ada.','Reset',()=>{
     S=newState();save();toast('Data belajar direset','ok');renderTop();go('beranda');});
   $('#btnLogout').onclick=()=>confirmBox('Keluar akun','Kamu akan keluar dari Tramvior di perangkat ini.','Keluar',()=>logout(),false);
-  $('#btnDel').onclick=()=>confirmBox('Hapus akun','Semua data akun dan progres belajar akan dihapus permanen dari perangkat ini. Tindakan ini tidak bisa dibatalkan.','Hapus akun',()=>{
-    saveUsers(users().filter(u=>u.id!==U.id));LS.del(stKey(U.id));logout();});
+  $('#btnDel').onclick=()=>confirmBox('Hapus akun','Semua data akun dan progres belajar akan dihapus permanen dari server. Tindakan ini tidak bisa dibatalkan.','Hapus akun',async()=>{
+    await flushStateSave();
+    try{await deleteStudentDocuments(U.id)}catch(error){console.error('Gagal menghapus dokumen akun:',error);toast('Foto akun gagal dihapus: '+error.message,'warn');return}
+    const {error}=await db.rpc('delete_own_account');
+    if(error){console.error('Gagal menghapus akun:',error);toast('Akun gagal dihapus: '+error.message,'warn');return}
+    await logout();
+  });
 }
 function editH(){
   return `${sub('Edit Profil','profil')}<div class="px">
@@ -4248,6 +4387,7 @@ function editH(){
       ${U.kartuJurusan?`<button type="button" class="icon-btn" id="viewKartu" aria-label="Lihat foto kartu">${ic('eye','sm')}</button>`:''}
      </div>
      <p class="small muted mt-1 mb-0">${ic('lock','sm')} Jurusan hanya bisa diganti oleh Admin sekolah. Hubungi Admin lewat aplikasi Admin jika kamu perlu pindah jurusan atau datamu salah.</p></div>
+    <div class="mb-3"><label class="form-label" for="cardFile">Foto kartu pelajar / kartu identitas jurusan</label><input id="cardFile" type="file" accept="image/jpeg,image/png,image/webp" class="form-control"><div class="err" data-for="cardFile"></div></div>
     <div class="row g-2 mb-3"><div class="col-12"><label class="form-label" for="eKelas">Kelas</label><select id="eKelas" class="form-select">${KELAS.map(k=>`<option ${k===U.kelas?'selected':''}>${k}</option>`).join('')}</select></div></div>
     <div class="mb-3"><label class="form-label" for="eSek">Sekolah</label><input id="eSek" class="form-control" value="${esc(U.sekolah)}"><div class="err" data-for="eSek"></div></div>
     <button class="btn btn-t w-100" type="submit">Simpan perubahan</button>
@@ -4255,15 +4395,23 @@ function editH(){
    </form></div>`;
 }
 function editB(){
-  $('#avFile').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{U.avatar=r.result;$('#avPrev').innerHTML=`<img src="${U.avatar}" style="width:100%;height:100%;object-fit:cover">`};r.readAsDataURL(f)};
+  $('#avFile').onchange=async e=>{const f=e.target.files[0];if(!f)return;
+    try{U.avatarPath=await uploadStudentImage(f,'avatar');U.avatar=await signedDocument(U.avatarPath);await saveUsers(users());$('#avPrev').innerHTML=`<img src="${U.avatar}" style="width:100%;height:100%;object-fit:cover">`}
+    catch(error){console.error('Gagal mengunggah foto profil:',error);toast('Foto profil gagal diunggah: '+error.message,'warn')}
+  };
   const vk=$('#viewKartu');if(vk)vk.onclick=()=>modal(`<div class="p-3 text-center"><h5 class="mb-2">Foto Kartu Jurusan</h5><img src="${U.kartuJurusan}" style="max-width:100%;border-radius:12px"><button class="btn btn-ghost w-100 mt-3" data-close>Tutup</button></div>`);
-  $('#fEdit').onsubmit=e=>{e.preventDefault();clearErrs($('#fEdit'));
+  $('#fEdit').onsubmit=async e=>{e.preventDefault();clearErrs($('#fEdit'));
     const nama=$('#eNama').value.trim(),sek=$('#eSek').value.trim();let bad=false;
     if(nama.length<2){fErr('eNama','Nama minimal 2 huruf');bad=true}
     if(sek.length<3){fErr('eSek','Isi nama sekolah');bad=true}
     if(bad)return;
     U.nama=nama;U.kelas=$('#eKelas').value;U.sekolah=sek;
-    saveUsers(users().map(x=>x.id===U.id?U:x));toast('Profil diperbarui','ok');go('profil');
+    const cardFile=$('#cardFile').files[0];
+    try{
+      if(cardFile){U.kartuPath=await uploadStudentImage(cardFile,'kartu');U.kartuJurusan=await signedDocument(U.kartuPath)}
+      await saveUsers(users().map(x=>x.id===U.id?U:x));
+      toast('Profil diperbarui. Foto kartu menunggu verifikasi admin.','ok');go('profil');
+    }catch(error){console.error('Gagal menyimpan profil:',error);toast('Profil gagal disimpan: '+error.message,'warn')}
   };
 }
 function pwEditH(){
@@ -4274,10 +4422,12 @@ function pwEditH(){
 function pwEditB(){
   bindPwToggles($('#fPw'));
   $('#fPw').onsubmit=async e=>{e.preventDefault();clearErrs($('#fPw'));
-    if(await hashPw($('#cOld').value,U.salt)!==U.hash)return fErr('cOld','Kata sandi saat ini salah');
+    const {error:authError}=await db.auth.signInWithPassword({email:U.email,password:$('#cOld').value});
+    if(authError)return fErr('cOld','Kata sandi saat ini salah');
     if($('#cNew').value.length<6)return fErr('cNew','Kata sandi baru minimal 6 karakter');
-    U.salt=Math.random().toString(36).slice(2);U.hash=await hashPw($('#cNew').value,U.salt);
-    saveUsers(users().map(x=>x.id===U.id?U:x));toast('Kata sandi diperbarui','ok');go('profil');
+    const {error}=await db.auth.updateUser({password:$('#cNew').value});
+    if(error){fErr('cNew','Kata sandi gagal diperbarui: '+error.message);return}
+    toast('Kata sandi diperbarui','ok');go('profil');
   };
 }
 function passG(){}
@@ -5281,11 +5431,22 @@ async function boot(){
   if('serviceWorker' in navigator){
     try{await navigator.serviceWorker.register('sw.js');SWREADY=true}catch(e){SWREADY=false}
   }
-  await seedDummyUsers();
+  db.auth.onAuthStateChange(event=>{
+    if(event==='PASSWORD_RECOVERY')setTimeout(showPasswordRecovery,0);
+  });
+  const {data,error}=await db.auth.getSession();
+  if(error){console.error('Gagal membaca sesi Supabase:',error);showAuth('login');toast('Tidak dapat memeriksa sesi akun. Silakan masuk lagi.','warn');return}
+  if(location.hash.includes('type=recovery'))setTimeout(showPasswordRecovery,0);
   const seen=LS.get('tv_onb',0);
-  const uid=getSession();
   const doStart=()=>{
-    if(uid){const u=users().find(x=>x.id===uid);if(u){startSession(u,!!localStorage.getItem('tv_session'));return}}
+    if(data.session){
+      startSession(data.session.user).catch(loadError=>{
+        console.error('Gagal memuat data akun:',loadError);
+        toast('Data akun gagal dimuat: '+loadError.message,'warn');
+        showAuth('login');
+      });
+      return;
+    }
     seen?showAuth('login'):showOnboard();
   };
   if(RM())doStart();else setTimeout(doStart,900);

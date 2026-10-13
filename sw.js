@@ -1,8 +1,9 @@
-const CACHE = 'tramvior-v3';
+const CACHE = 'tramvior-v4';
 
 const ASSETS = [
   './',
   './index.html',
+  './supabase-client.js',
   './manifest.json',
   './img/logotramvior144.png',
   './img/logotramvior192.png',
@@ -15,6 +16,7 @@ const ASSETS = [
 // Library dari CDN yang dibutuhkan agar tampilan tetap utuh saat offline
 const CDN = [
   'https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css',
+  'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',
   'https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap',
   'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
   'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'
@@ -48,6 +50,7 @@ const cacheable = res =>
 self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET' || !req.url.startsWith('http')) return;
+  if (new URL(req.url).hostname.endsWith('.supabase.co')) return;
 
   const sameOrigin = req.url.startsWith(self.location.origin);
   const isPage = req.mode === 'navigate' || req.destination === 'document';
