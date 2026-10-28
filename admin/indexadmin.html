@@ -28,6 +28,7 @@ table{font-size:13px}
 .banner-note{background:#FFF5D6;color:#8A6100;border-radius:12px;padding:10px 14px;font-size:12.5px;margin-bottom:14px}
 [data-bs-theme=dark] .banner-note{background:#3A3010;color:#FFD466}
 .modal-dialog{max-width:640px}
+.modal-content{max-height:calc(100vh - 2rem);overflow-y:auto}
 .log-tbl{max-height:420px;overflow:auto}
 .sec-label{font-weight:600;font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin:14px 0 6px}
 .form-select,.form-control{border-radius:10px}
@@ -395,6 +396,14 @@ function openDetail(id){
     <div class="flex-fill"><h5 class="mb-0">${esc(u.nama)}</h5><p class="small muted mb-0">${esc(u.email)} · ${esc(u.jurusan)} · Kelas ${esc(u.kelas)}</p><p class="small muted mb-0">${esc(u.sekolah)}</p></div>
     <button class="btn-close" id="mClose"></button></div>
 
+   <div class="sec-label">Premium</div>
+   <p class="small mt-2 mb-0">${isPrem?`<span class="pill pill-y">Aktif · ${Math.ceil((u.premiumUntil-Date.now())/864e5)} hari lagi</span> (berlaku sampai ${fmtDate(u.premiumUntil)})`:`<span class="pill">Belum aktif</span>`}</p>
+   <p class="small muted mt-2 mb-2">Pastikan pembayaran sudah diterima dan cocokkan email akun siswa sebelum mengaktifkan.</p>
+   <div class="d-flex gap-2 mb-3">
+    <button class="btn btn-sm btn-success" id="btnActivate">Aktifkan / perpanjang 30 hari</button>
+    ${isPrem?'<button class="btn btn-sm btn-outline-danger" id="btnRevoke">Cabut Premium</button>':''}
+   </div>
+
    ${u.kartuJurusan?`<div class="sec-label">Kartu Identitas Jurusan</div><img src="${u.kartuJurusan}" style="max-width:100%;max-height:200px;border-radius:12px;border:1px solid var(--line)">`:'<p class="small muted">Belum ada foto kartu diunggah.</p>'}
    <div class="d-flex gap-2 mt-2">
     <button class="btn btn-sm ${u.kartuVerified?'btn-outline-secondary':'btn-success'}" id="btnVerify">${u.kartuVerified?'Batalkan verifikasi':'Verifikasi kartu'}</button>
@@ -407,11 +416,6 @@ function openDetail(id){
     <div class="col-6 col-md-3"><div class="stat-box"><b>${mastered.length}</b><small>Kompetensi</small></div></div>
     <div class="col-6 col-md-3"><div class="stat-box"><b>${badges.length}</b><small>Lencana</small></div></div>
    </div>
-   <p class="small mt-2 mb-0">${isPrem?`<span class="pill pill-y">Premium aktif · ${Math.ceil((u.premiumUntil-Date.now())/864e5)} hari lagi</span> (berlaku sampai ${fmtDate(u.premiumUntil)})`:`<span class="pill">Akun Gratis</span>`}</p>
-   <p class="small muted mt-2 mb-2">Cocokkan pembayaran di WhatsApp dengan email akun ini sebelum mengaktifkan Premium.</p>
-   <button class="btn btn-sm btn-success" id="btnActivate">Aktifkan / perpanjang 30 hari</button>
-   ${isPrem?`<button class="btn btn-sm btn-outline-danger mt-2" id="btnRevoke">Cabut Premium</button>`:''}
-
    <div class="sec-label d-flex justify-content-between align-items-center">Log Jawaban Soal (${log.length})<button class="btn btn-sm btn-outline-secondary" id="btnExportLog">Ekspor CSV</button></div>
    <div class="log-tbl">
    ${log.length?`<table class="table table-sm"><thead><tr><th>Waktu</th><th>Mode</th><th>Soal</th><th>Jawaban</th><th>Status</th></tr></thead><tbody>
