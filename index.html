@@ -426,6 +426,7 @@ small,.small{font-size:12px}
    DATA KONTEN (contoh) per jurusan
    ===================================================== */
 const FREE_CAP=150,FREE_SOAL=5,FREE_AI=5,FREE_VID=2,PRICE=15000;
+const PREMIUM_WA='https://wa.me/62895352129120';
 /* Jumlah soal per sesi */
 const LATIHAN_N=35;   /* Latihan Soal biasa */
 const UJIAN_N=50;     /* Mode Ujian */
@@ -3711,6 +3712,7 @@ function showPasswordRecovery(){
 async function startSession(authUser){
   U=await loadCloudUser(authUser);
   await importLegacyData(U);
+  S.premium={on:false};
   rollover();save();
   showSec('shell');renderTop();renderTabs();
   if(location.hash==='#/beranda')render();else location.hash='#/beranda';
@@ -3773,7 +3775,7 @@ function render(){
 }
 window.addEventListener('hashchange',render);
 
-/* ---------- Premium: tombol on/off sederhana (prototipe) ---------- */
+/* ---------- Premium ---------- */
 function upgrade(reason){
   const m=modal(`<div class="p-4">
    <div class="text-center"><div class="up-ic">${ic('crown')}</div><h3>Premium</h3>${reason?`<p class="muted mt-1">${esc(reason)}</p>`:''}</div>
@@ -3784,20 +3786,11 @@ function upgrade(reason){
     <li>${ic('check')}Mode ujian berwaktu untuk uji kompetensi</li>
     <li>${ic('check')}Dunia Kerja Simulator</li>
     <li>${ic('check')}Semua misi harian dan Skill Passport</li></ul>
-   <div class="price"><b>${rp(PRICE)}</b><span class="muted">/bulan</span></div>
-   <div class="set" style="border-bottom:0">
-    <span class="ic">${ic('crown')}</span><span class="g">Aktifkan Premium</span>
-    <div class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" id="swPremium" ${premium()?'checked':''}></div>
-   </div>
-   <p class="small muted text-center mt-2 mb-3">Prototipe: tombol ini hanya simulasi, tidak ada pembayaran sungguhan.</p>
-   <button class="btn btn-ghost w-100" data-close>Tutup</button>
-   </div>`);
-  $('#swPremium',m).onchange=e=>{
-    S.premium.on=e.target.checked;save();renderTop();
-    toast(e.target.checked?'Premium aktif (simulasi)':'Premium dimatikan',e.target.checked?'ok':'warn');
-    if(e.target.checked)confetti(50);
-    render();
-  };
+    <div class="price"><b>${rp(PRICE)}</b><span class="muted">/bulan</span></div>
+    <a class="btn btn-t w-100 mt-3" href="${PREMIUM_WA}" target="_blank" rel="noopener">Hubungi Admin via WhatsApp</a>
+    <p class="small muted text-center mt-2 mb-3">Hubungi admin Tramvior untuk berlangganan Premium.</p>
+    <button class="btn btn-ghost w-100" data-close>Tutup</button>
+    </div>`);
 }
 document.addEventListener('click',e=>{const t=e.target.closest('[data-up]');if(t){e.preventDefault();upgrade(t.dataset.up||'')}});
 
@@ -4335,8 +4328,8 @@ function profilH(){
    <div class="stat"><div><b>${S.lifetime}</b><small>Total poin</small></div><div><b>${S.streak}</b><small>Streak</small></div><div><b>${Object.keys(S.mastered).length}</b><small>Kompetensi</small></div></div>
    <div class="card-t mt-3">
     <div class="set" style="border-bottom:0">
-     <span class="ic">${ic('crown')}</span><span class="g"><b>Premium</b><br><span class="small muted">${rp(PRICE)}/bulan (simulasi)</span></span>
-     <div class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" id="swPremiumProfil" ${premium()?'checked':''}></div>
+     <span class="ic">${ic('crown')}</span><span class="g"><b>Premium</b><br><span class="small muted">${rp(PRICE)}/bulan</span></span>
+     <a class="btn btn-o btn-sm" href="${PREMIUM_WA}" target="_blank" rel="noopener">Hubungi Admin</a>
     </div>
    </div>
    <div class="sec-h"><h3>Skill Passport</h3><a href="#/passport">Lihat semua</a></div>
@@ -4356,12 +4349,6 @@ function profilH(){
 function profilB(){
   $('#swDark').onchange=e=>{SET.dark=e.target.checked;saveSet();applyTheme();renderTop()};
   $('#swSound').onchange=e=>{SET.sound=e.target.checked;saveSet()};
-  $('#swPremiumProfil').onchange=e=>{
-    S.premium.on=e.target.checked;save();renderTop();
-    toast(e.target.checked?'Premium aktif (simulasi)':'Premium dimatikan',e.target.checked?'ok':'warn');
-    if(e.target.checked)confetti(50);
-    go('profil');
-  };
   const bi=$('#btnInstall');if(bi&&!bi.hidden)bi.onclick=async()=>{if(deferredPrompt){deferredPrompt.prompt();await deferredPrompt.userChoice;deferredPrompt=null;render()}};
   $('#btnReset').onclick=()=>confirmBox('Reset data belajar','Progres, poin, streak, dan lencana akan dihapus. Akun tetap ada.','Reset',()=>{
     S=newState();save();toast('Data belajar direset','ok');renderTop();go('beranda');});
