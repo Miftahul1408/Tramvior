@@ -427,6 +427,10 @@ small,.small{font-size:12px}
    ===================================================== */
 const FREE_CAP=150,FREE_SOAL=5,FREE_AI=5,FREE_VID=2,PRICE=15000;
 const PREMIUM_WA='https://wa.me/62895352129120';
+function premiumWaLink(){
+  const message=`Halo Admin Tramvior, saya ingin berlangganan Premium.\nNama: ${U.nama}\nEmail akun: ${U.email}\nID akun: ${U.id}\nMohon informasi pembayaran.`;
+  return `${PREMIUM_WA}?text=${encodeURIComponent(message)}`;
+}
 /* Jumlah soal per sesi */
 const LATIHAN_N=35;   /* Latihan Soal biasa */
 const UJIAN_N=50;     /* Mode Ujian */
@@ -3324,6 +3328,7 @@ let U=null,S=null,CLEAN=()=>{},SWREADY=false,deferredPrompt=null;
 let USER_CACHE=[];
 let stateSaveTimer=null,stateSaveChain=Promise.resolve(),stateSaveErrorShown=false;
 let queuedStateSave=null;
+let premiumExpiresAt=0;
 const db=window.tramviorSupabase;
 const users=()=>USER_CACHE;
 function saveUsers(list){
@@ -3343,7 +3348,7 @@ function saveUsers(list){
 }
 const stKey=id=>'tv_state_'+id;
 const newDaily=()=>({ai:0,videos:[],soal:0,freeEarned:0,q:{},qd:{}});
-const newState=()=>({points:0,lifetime:0,weekPoints:0,weekKey:weekKey(),streak:0,lastActive:'',day:dstr(),daily:newDaily(),done:{video:{},latihan:{}},mastered:{},passports:{},badges:{},premium:{on:false},redeem:[],simDone:0,correct:0,examBest:0,pending:0,lastSync:Date.now(),chat:[],answerLog:[]});
+const newState=()=>({points:0,lifetime:0,weekPoints:0,weekKey:weekKey(),streak:0,lastActive:'',day:dstr(),daily:newDaily(),done:{video:{},latihan:{}},mastered:{},passports:{},badges:{},redeem:[],simDone:0,correct:0,examBest:0,pending:0,lastSync:Date.now(),chat:[],answerLog:[]});
 function profileFromRow(row,cardUrl=null,avatarUrl=null){
   return {
     id:row.id,email:row.email,nama:row.nama,jurusan:row.jurusan,kelas:row.kelas,
@@ -3364,11 +3369,16 @@ async function loadCloudUser(authUser){
   if(profileError)throw profileError;
   const {data:stateRow,error:stateError}=await db.from('student_state').select('data').eq('student_id',authUser.id).maybeSingle();
   if(stateError)throw stateError;
-  const [cardUrl,avatarUrl]=await Promise.all([signedDocument(row.kartu_path),signedDocument(row.avatar_path)]);
+  const [cardUrl,avatarUrl,entitlementResult]=await Promise.all([
+    signedDocument(row.kartu_path),signedDocument(row.avatar_path),
+    db.from('premium_entitlements').select('expires_at').eq('student_id',authUser.id).maybeSingle()
+  ]);
+  if(entitlementResult.error)throw entitlementResult.error;
+  premiumExpiresAt=entitlementResult.data?.expires_at?Date.parse(entitlementResult.data.expires_at):0;
   const user=profileFromRow(row,cardUrl,avatarUrl);
   USER_CACHE=[user];
   S=stateRow?.data||newState();
-  S.premium=S.premium||{on:false};S.chat=S.chat||[];S.answerLog=S.answerLog||[];
+  S.chat=S.chat||[];S.answerLog=S.answerLog||[];
   return user;
 }
 async function uploadStudentImage(file,kind,userId=U?.id){
@@ -3456,7 +3466,13 @@ async function flushStateSave(){
   persistQueuedState();
   await stateSaveChain;
 }
-const premium=()=>!!S&&!!S.premium.on;
+const premium=()=>!!S&&premiumExpiresAt>Date.now();
+async function refreshPremiumEntitlement(){
+  const {data,error}=await db.from('premium_entitlements').select('expires_at').eq('student_id',U.id).maybeSingle();
+  if(error)throw error;
+  premiumExpiresAt=data?.expires_at?Date.parse(data.expires_at):0;
+  return premium();
+}
 function rollover(){
   const t=dstr();
   if(S.day!==t){S.day=t;S.daily=newDaily()}
@@ -3712,7 +3728,7 @@ function showPasswordRecovery(){
 async function startSession(authUser){
   U=await loadCloudUser(authUser);
   await importLegacyData(U);
-  S.premium={on:false};
+  delete S.premium;
   rollover();save();
   showSec('shell');renderTop();renderTabs();
   if(location.hash==='#/beranda')render();else location.hash='#/beranda';
@@ -3787,8 +3803,8 @@ function upgrade(reason){
     <li>${ic('check')}Dunia Kerja Simulator</li>
     <li>${ic('check')}Semua misi harian dan Skill Passport</li></ul>
     <div class="price"><b>${rp(PRICE)}</b><span class="muted">/bulan</span></div>
-    <a class="btn btn-t w-100 mt-3" href="${PREMIUM_WA}" target="_blank" rel="noopener">Hubungi Admin via WhatsApp</a>
-    <p class="small muted text-center mt-2 mb-3">Hubungi admin Tramvior untuk berlangganan Premium.</p>
+    <a class="btn btn-t w-100 mt-3" href="${premiumWaLink()}" target="_blank" rel="noopener">Hubungi Admin via WhatsApp</a>
+    <p class="small muted text-center mt-2 mb-3">Premium aktif setelah admin memverifikasi pembayaran.</p>
     <button class="btn btn-ghost w-100" data-close>Tutup</button>
     </div>`);
 }
@@ -4329,8 +4345,10 @@ function profilH(){
    <div class="card-t mt-3">
     <div class="set" style="border-bottom:0">
      <span class="ic">${ic('crown')}</span><span class="g"><b>Premium</b><br><span class="small muted">${rp(PRICE)}/bulan</span></span>
-     <a class="btn btn-o btn-sm" href="${PREMIUM_WA}" target="_blank" rel="noopener">Hubungi Admin</a>
+     <a class="btn btn-o btn-sm" href="${premiumWaLink()}" target="_blank" rel="noopener">Hubungi Admin</a>
     </div>
+    <button class="btn btn-ghost btn-sm w-100 mt-2" id="btnPremiumRefresh">Saya sudah membayar — cek status</button>
+    <p class="small muted text-center mt-2 mb-0">Admin akan mengaktifkan Premium setelah pembayaran terverifikasi.</p>
    </div>
    <div class="sec-h"><h3>Skill Passport</h3><a href="#/passport">Lihat semua</a></div>
    <div class="grid2">${Object.keys(S.mastered).slice(0,2).map(id=>{const k=KOMP.find(x=>x.id===id);return k?`<a class="sc" href="#/passport/${id}" style="color:var(--ink)"><div class="ic-w">${ic('award')}</div><b>${esc(k.judul)}</b><small>${S.passports[id]?'Terbit':'Siap diterbitkan'}</small></a>`:''}).join('')||`<div class="empty" style="grid-column:1/-1">${ic('award')}<b>Belum ada kompetensi</b>Selesaikan video dan latihan untuk mendapat Skill Passport.</div>`}</div>
@@ -4349,6 +4367,18 @@ function profilH(){
 function profilB(){
   $('#swDark').onchange=e=>{SET.dark=e.target.checked;saveSet();applyTheme();renderTop()};
   $('#swSound').onchange=e=>{SET.sound=e.target.checked;saveSet()};
+  $('#btnPremiumRefresh').onclick=async e=>{
+    const b=e.currentTarget;b.disabled=true;
+    try{
+      const active=await refreshPremiumEntitlement();
+      toast(active?'Premium aktif. Selamat belajar!':'Premium belum aktif. Pastikan admin sudah mengonfirmasi pembayaran.',active?'ok':'warn');
+      renderTop();render();
+    }catch(error){
+      console.error('Gagal memeriksa status Premium:',error);
+      toast('Status Premium gagal diperbarui: '+error.message,'warn');
+      b.disabled=false;
+    }
+  };
   const bi=$('#btnInstall');if(bi&&!bi.hidden)bi.onclick=async()=>{if(deferredPrompt){deferredPrompt.prompt();await deferredPrompt.userChoice;deferredPrompt=null;render()}};
   $('#btnReset').onclick=()=>confirmBox('Reset data belajar','Progres, poin, streak, dan lencana akan dihapus. Akun tetap ada.','Reset',()=>{
     S=newState();save();toast('Data belajar direset','ok');renderTop();go('beranda');});

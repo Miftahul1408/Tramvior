@@ -68,13 +68,20 @@ let USERS=[],STATES={};
 const getUsers=()=>USERS;
 const getState=id=>STATES[id]||null;
 async function loadDashboardData(){
-  const [{data:profiles,error:profileError},{data:states,error:stateError}]=await Promise.all([
+  const [
+    {data:profiles,error:profileError},
+    {data:states,error:stateError},
+    {data:entitlements,error:entitlementError}
+  ]=await Promise.all([
     db.from('student_profiles').select('*').order('created_at',{ascending:false}),
-    db.from('student_state').select('student_id,data')
+    db.from('student_state').select('student_id,data'),
+    db.from('premium_entitlements').select('student_id,expires_at')
   ]);
   if(profileError)throw profileError;
   if(stateError)throw stateError;
+  if(entitlementError)throw entitlementError;
   STATES=Object.fromEntries(states.map(row=>[row.student_id,row.data]));
+  const premiumExpiry=Object.fromEntries(entitlements.map(row=>[row.student_id,Date.parse(row.expires_at)]));
   USERS=await Promise.all(profiles.map(async row=>{
     const card=row.kartu_path?await db.storage.from('student-docs').createSignedUrl(row.kartu_path,3600):{data:null,error:null};
     if(card.error)throw card.error;
@@ -82,6 +89,7 @@ async function loadDashboardData(){
       id:row.id,email:row.email,nama:row.nama,jurusan:row.jurusan,kelas:row.kelas,
       sekolah:row.sekolah,kartuJurusan:card.data?.signedUrl||'',
       kartuVerified:row.kartu_verified,kartuTanggal:row.kartu_tanggal,
+      premiumUntil:premiumExpiry[row.id]||0,
       createdAt:new Date(row.created_at).getTime()
     };
   }));
@@ -133,9 +141,9 @@ function renderLogin(){
    DASHBOARD
    ===================================================== */
 let FILTER={q:'',jur:'',prem:''};
-function premLabel(u,s){
-  if(!s||!s.premium||!s.premium.until||s.premium.until<=Date.now())return `<span class="pill">Gratis</span>`;
-  const d=Math.ceil((s.premium.until-Date.now())/864e5);
+function premLabel(u){
+  if(!u.premiumUntil||u.premiumUntil<=Date.now())return `<span class="pill">Gratis</span>`;
+  const d=Math.ceil((u.premiumUntil-Date.now())/864e5);
   return `<span class="pill pill-y">Premium · ${d} hari</span>`;
 }
 function rowStats(u){
@@ -234,10 +242,9 @@ function paintTable(){
   const users=getUsers();
   const body=$('#tblBody');if(!body)return;
   const rows=users.map(u=>{
-    const s=getState(u.id)||{};
     const stat=rowStats(u);
-    const isPrem=!!(s.premium&&s.premium.until>Date.now());
-    return{u,s,stat,isPrem};
+    const isPrem=u.premiumUntil>Date.now();
+    return{u,stat,isPrem};
   });
   const totalPremium=rows.filter(r=>r.isPrem).length;
   const totalVerif=rows.filter(r=>r.u.kartuVerified).length;
@@ -255,13 +262,13 @@ function paintTable(){
     if(FILTER.prem==='gratis'&&isPrem)return false;
     return true;
   });
-  body.innerHTML=filtered.map(({u,s,stat,isPrem})=>`
+  body.innerHTML=filtered.map(({u,stat,isPrem})=>`
    <tr class="tbl-row" data-id="${u.id}">
     <td><div class="d-flex align-items-center gap-2"><div class="av">${initials(u.nama)}</div><div><b>${esc(u.nama)}</b><div class="small muted">${esc(u.email)}</div></div></div></td>
     <td>${esc(u.jurusan)}<div class="small muted">Kelas ${esc(u.kelas)}</div></td>
     <td>${esc(u.sekolah)}</td>
     <td>${u.kartuVerified?'<span class="pill pill-ok">Terverifikasi</span>':'<span class="pill pill-bad">Belum</span>'}</td>
-    <td>${isPrem?`<span class="pill pill-y">Premium · ${Math.ceil((s.premium.until-Date.now())/864e5)}h</span>`:'<span class="pill">Gratis</span>'}</td>
+    <td>${premLabel(u)}</td>
     <td>${(stat.points||0).toLocaleString('id-ID')}</td>
     <td>${stat.mastered}</td>
     <td>${stat.answers}</td>
@@ -350,7 +357,7 @@ function exportAllCSV(){
   const users=getUsers();
   const head=['Nama','Email','Jurusan','Kelas','Sekolah','KartuTerverifikasi','StatusPremium','PoinLifetime','Streak','KompetensiDikuasai','JumlahJawaban'];
   const rows=users.map(u=>{
-    const s=getState(u.id)||{};const isPrem=s.premium&&s.premium.until>Date.now();
+    const s=getState(u.id)||{};const isPrem=u.premiumUntil>Date.now();
     return[u.nama,u.email,u.jurusan,u.kelas,u.sekolah,u.kartuVerified?'Ya':'Tidak',isPrem?'Premium':'Gratis',s.lifetime||0,s.streak||0,Object.keys(s.mastered||{}).length,(s.answerLog||[]).length];
   });
   downloadCSV('tramvior-siswa.csv',[head,...rows]);
@@ -371,14 +378,14 @@ function modal(html){
   return $('.modal-content',r);
 }
 function closeModal(){$('#modalRoot').innerHTML=''}
-function confirmBox(title,msg,okLabel,cb){
-  const m=modal(`<div class="p-4"><h5>${esc(title)}</h5><p class="muted small">${esc(msg)}</p><div class="d-flex gap-2"><button class="btn btn-outline-secondary flex-fill" id="cBatal">Batal</button><button class="btn btn-danger flex-fill" id="cOk">${esc(okLabel)}</button></div></div>`);
+function confirmBox(title,msg,okLabel,cb,okClass='btn-danger'){
+  const m=modal(`<div class="p-4"><h5>${esc(title)}</h5><p class="muted small">${esc(msg)}</p><div class="d-flex gap-2"><button class="btn btn-outline-secondary flex-fill" id="cBatal">Batal</button><button class="btn ${okClass} flex-fill" id="cOk">${esc(okLabel)}</button></div></div>`);
   $('#cBatal',m).onclick=closeModal;$('#cOk',m).onclick=()=>{closeModal();cb()};
 }
 function openDetail(id){
   const users=getUsers();const u=users.find(x=>x.id===id);if(!u)return;
   const s=getState(id)||{};
-  const isPrem=s.premium&&s.premium.until>Date.now();
+  const isPrem=u.premiumUntil>Date.now();
   const mastered=Object.keys(s.mastered||{});
   const badges=Object.keys(s.badges||{});
   const log=(s.answerLog||[]).slice().reverse();
@@ -400,7 +407,9 @@ function openDetail(id){
     <div class="col-6 col-md-3"><div class="stat-box"><b>${mastered.length}</b><small>Kompetensi</small></div></div>
     <div class="col-6 col-md-3"><div class="stat-box"><b>${badges.length}</b><small>Lencana</small></div></div>
    </div>
-   <p class="small mt-2 mb-0">${isPrem?`<span class="pill pill-y">Premium aktif · ${Math.ceil((s.premium.until-Date.now())/864e5)} hari lagi</span> (berlaku sampai ${fmtDate(s.premium.until)})`:`<span class="pill">Akun Gratis</span>`}</p>
+   <p class="small mt-2 mb-0">${isPrem?`<span class="pill pill-y">Premium aktif · ${Math.ceil((u.premiumUntil-Date.now())/864e5)} hari lagi</span> (berlaku sampai ${fmtDate(u.premiumUntil)})`:`<span class="pill">Akun Gratis</span>`}</p>
+   <p class="small muted mt-2 mb-2">Cocokkan pembayaran di WhatsApp dengan email akun ini sebelum mengaktifkan Premium.</p>
+   <button class="btn btn-sm btn-success" id="btnActivate">Aktifkan / perpanjang 30 hari</button>
    ${isPrem?`<button class="btn btn-sm btn-outline-danger mt-2" id="btnRevoke">Cabut Premium</button>`:''}
 
    <div class="sec-label d-flex justify-content-between align-items-center">Log Jawaban Soal (${log.length})<button class="btn btn-sm btn-outline-secondary" id="btnExportLog">Ekspor CSV</button></div>
@@ -424,12 +433,19 @@ function openDetail(id){
     if(error){console.error('Gagal mengubah verifikasi kartu:',error);toast('Verifikasi gagal: '+error.message,'bad');return}
     u.kartuVerified=verified;toast(verified?'Kartu diverifikasi':'Verifikasi dibatalkan','ok');closeModal();paintTable();
   };
-  const br=$('#btnRevoke',m);if(br)br.onclick=()=>confirmBox('Cabut Premium',`Masa Premium ${esc(u.nama)} akan diakhiri sekarang juga.`,'Cabut Premium',()=>{
-    s.premium.until=0;
-    db.from('student_state').upsert({student_id:u.id,data:s},{onConflict:'student_id'}).then(({error})=>{
-      if(error){console.error('Gagal mencabut Premium:',error);toast('Premium gagal dicabut: '+error.message,'bad');return}
-      STATES[u.id]=s;toast('Premium dicabut','ok');paintTable();
-    });
+  $('#btnActivate',m).onclick=()=>confirmBox('Aktifkan Premium',`Pastikan pembayaran ${esc(u.nama)} (${esc(u.email)}) sudah diterima dan cocok dengan akun ini.`,'Aktifkan 30 hari',async()=>{
+    const {data,error}=await db.rpc('admin_set_premium',{p_student_id:u.id,p_duration_days:30,p_revoke:false});
+    if(error){console.error('Gagal mengaktifkan Premium:',error);toast('Premium gagal diaktifkan: '+error.message,'bad');return}
+    const expiresAt=Date.parse(data);
+    if(!Number.isFinite(expiresAt)){toast('Premium tersimpan, tetapi tanggal berakhir tidak terbaca. Muat ulang data.','bad');return}
+    u.premiumUntil=expiresAt;toast('Premium aktif sampai '+fmtDate(expiresAt),'ok');closeModal();paintTable();
+  },'btn-success');
+  const br=$('#btnRevoke',m);if(br)br.onclick=()=>confirmBox('Cabut Premium',`Masa Premium ${esc(u.nama)} akan diakhiri sekarang juga.`,'Cabut Premium',async()=>{
+    const {data,error}=await db.rpc('admin_set_premium',{p_student_id:u.id,p_duration_days:0,p_revoke:true});
+    if(error){console.error('Gagal mencabut Premium:',error);toast('Premium gagal dicabut: '+error.message,'bad');return}
+    const expiresAt=Date.parse(data);
+    if(!Number.isFinite(expiresAt)){toast('Premium dicabut, tetapi tanggal status tidak terbaca. Muat ulang data.','bad');return}
+    u.premiumUntil=expiresAt;toast('Premium dicabut','ok');closeModal();paintTable();
   });
   $('#btnExportLog',m).onclick=()=>{
     const head=['Waktu','Mode','Jurusan','Kompetensi','Soal','JawabanDipilih','JawabanBenar','Status'];

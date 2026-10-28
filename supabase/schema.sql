@@ -196,6 +196,92 @@ on public.student_state for update to authenticated
 using ((select auth.jwt() -> 'app_metadata' ->> 'role') = 'admin')
 with check ((select auth.jwt() -> 'app_metadata' ->> 'role') = 'admin');
 
+create table if not exists public.premium_entitlements (
+  student_id uuid primary key references public.student_profiles (id) on delete cascade,
+  expires_at timestamptz not null,
+  updated_at timestamptz not null default now(),
+  updated_by uuid references auth.users (id) on delete set null
+);
+
+alter table public.premium_entitlements enable row level security;
+
+drop policy if exists "Students read own Premium entitlement" on public.premium_entitlements;
+create policy "Students read own Premium entitlement"
+on public.premium_entitlements for select to authenticated
+using (student_id = (select auth.uid()));
+
+drop policy if exists "Admins read all Premium entitlements" on public.premium_entitlements;
+create policy "Admins read all Premium entitlements"
+on public.premium_entitlements for select to authenticated
+using ((select auth.jwt() -> 'app_metadata' ->> 'role') = 'admin');
+
+revoke all on public.premium_entitlements from anon, authenticated;
+grant select on public.premium_entitlements to authenticated;
+
+-- Preserve still-active Premium grants created by the previous admin dashboard.
+insert into public.premium_entitlements (student_id, expires_at)
+select student_id,
+       to_timestamp(((data #>> '{premium,until}')::numeric / 1000)::double precision)
+from public.student_state
+where case
+  when data #>> '{premium,until}' ~ '^[0-9]+([.][0-9]+)?$'
+    then (data #>> '{premium,until}')::numeric > extract(epoch from now()) * 1000
+  else false
+end
+on conflict (student_id) do nothing;
+
+create or replace function public.admin_set_premium(
+  p_student_id uuid,
+  p_duration_days integer default 30,
+  p_revoke boolean default false
+)
+returns timestamptz
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_expires_at timestamptz;
+begin
+  if (select auth.jwt() -> 'app_metadata' ->> 'role') is distinct from 'admin' then
+    raise exception 'Admin role required';
+  end if;
+
+  if not exists (select 1 from public.student_profiles where id = p_student_id) then
+    raise exception 'Student profile not found';
+  end if;
+
+  if p_revoke then
+    insert into public.premium_entitlements (student_id, expires_at, updated_by)
+    values (p_student_id, now(), (select auth.uid()))
+    on conflict (student_id) do update
+      set expires_at = now(),
+          updated_at = now(),
+          updated_by = (select auth.uid())
+    returning expires_at into v_expires_at;
+    return v_expires_at;
+  end if;
+
+  if p_duration_days is null or p_duration_days not in (30, 90, 365) then
+    raise exception 'Premium duration must be 30, 90, or 365 days';
+  end if;
+
+  insert into public.premium_entitlements (student_id, expires_at, updated_by)
+  values (p_student_id, now() + pg_catalog.make_interval(days => p_duration_days), (select auth.uid()))
+  on conflict (student_id) do update
+    set expires_at = greatest(public.premium_entitlements.expires_at, now())
+          + pg_catalog.make_interval(days => p_duration_days),
+        updated_at = now(),
+        updated_by = (select auth.uid())
+  returning expires_at into v_expires_at;
+
+  return v_expires_at;
+end;
+$$;
+
+revoke all on function public.admin_set_premium(uuid, integer, boolean) from public, anon;
+grant execute on function public.admin_set_premium(uuid, integer, boolean) to authenticated;
+
 revoke all on public.student_profiles from anon, authenticated;
 grant select on public.student_profiles to authenticated;
 revoke update (jurusan) on public.student_profiles from authenticated;
